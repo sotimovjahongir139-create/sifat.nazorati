@@ -67,17 +67,17 @@ async function runMigrations() {
   await db.query(`CREATE INDEX IF NOT EXISTS idx_entries_category   ON entries(category)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_entries_created_by ON entries(created_by)`);
 
-  // Seed default users only on first run
-  const { rows } = await db.query('SELECT COUNT(*) FROM users');
-  if (parseInt(rows[0].count) === 0) {
-    const defaults = [
-      { username: 'admin',     password: 'arkon08_sifat', role: 'admin'    },
-      { username: 'boss',      password: 'boss123',       role: 'boss'      },
-      { username: 'operator1', password: 'oper123',       role: 'operator'  },
-      { username: 'operator2', password: 'oper123',       role: 'operator'  },
-      { username: 'operator3', password: 'oper123',       role: 'operator'  },
-    ];
-    for (const u of defaults) {
+  // Seed default users — ON CONFLICT DO NOTHING (safe to re-run)
+  const defaults = [
+    { username: 'admin2',         password: 'arkon08_sifat', role: 'admin'    },
+    { username: 'admin',          password: 'arkon07_sifat', role: 'boss'     },
+    { username: 'sifat_nazorati', password: 'arkon09_sifat', role: 'operator' },
+    { username: 'operator2',      password: 'oper123',       role: 'operator' },
+    { username: 'operator3',      password: 'oper123',       role: 'operator' },
+  ];
+  for (const u of defaults) {
+    const exists = await db.query('SELECT id FROM users WHERE username = $1', [u.username]);
+    if (!exists.rows.length) {
       const hash = await bcrypt.hash(u.password, 10);
       await db.query(
         'INSERT INTO users (username, password_hash, role) VALUES ($1,$2,$3)',

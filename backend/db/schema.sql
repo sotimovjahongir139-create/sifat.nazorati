@@ -22,6 +22,18 @@ CREATE TABLE IF NOT EXISTS entries (
   created_at   TIMESTAMPTZ  DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_entries_date     ON entries(date);
+CREATE INDEX IF NOT EXISTS idx_entries_date      ON entries(date);
 CREATE INDEX IF NOT EXISTS idx_entries_category  ON entries(category);
 CREATE INDEX IF NOT EXISTS idx_entries_created_by ON entries(created_by);
+
+-- ── BOSHLANG'ICH FOYDALANUVCHILAR ─────────────────────────
+-- Parollar bcryptjs saltRounds:10 bilan hashlangan
+-- ON CONFLICT DO NOTHING — mavjud bo'lsa o'tkazib yuboradi
+
+INSERT INTO users (username, password_hash, role) VALUES
+  ('admin2',         '$2a$10$YBT/ERnvcsTbCJ13R29y1Ob5/TJM/QDQz7F3CVo09Hqh/LxSqdPDe', 'admin'),
+  ('admin',          '$2a$10$jnFzqlLQInOD23rsdVWa7ekm0C41c1.DMoPt9jZsSk7vRQKw8rmLq', 'boss'),
+  ('sifat_nazorati', '$2a$10$mAuVebGdNtfNWqYIzcrbSOuhMK8.91IH.iDdpfCVkWSX.1h1KRhOO', 'operator'),
+  ('operator2',      '$2a$10$yNZ.UjfiEKLAG1AEg0DnJucj26aTszR.xkJ0Wzqohqn2.5FLZSKQi', 'operator'),
+  ('operator3',      '$2a$10$r7yQ4aPCIZt5wAfkWokyl.KaM/UxwhxkEqzb4saO7tGAQPB/fuerG', 'operator')
+ON CONFLICT (username) DO NOTHING;
