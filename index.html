@@ -191,6 +191,19 @@ textarea.fi{resize:vertical;min-height:88px}
 .mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:190;backdrop-filter:blur(2px)}
 .mob-overlay.open{display:block}
 
+/* TREND TOGGLE TABS */
+.trend-tabs{display:flex;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px}
+.ttab{background:none;border:none;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;padding:5px 10px;border-radius:6px;transition:all .15s;font-family:inherit}
+.ttab.active{background:var(--blue);color:#fff}
+.ttab:hover:not(.active){background:rgba(79,142,247,.1);color:var(--text)}
+/* TREND LIST (model/sabab mode) */
+.tl-total{font-size:19px;font-weight:800;color:var(--blue);margin-bottom:10px;padding:4px 0}
+.tl-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(28,28,66,.5)}
+.tl-item:last-child{border-bottom:none}
+.tl-name{font-size:12px;font-weight:600;color:var(--text);width:150px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-bar-wrap{flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;min-width:30px}
+.tl-bar{height:100%;border-radius:3px;background:var(--blue)}
+.tl-info{font-size:12px;color:var(--text2);white-space:nowrap;min-width:95px;text-align:right;font-weight:500}
 @media(max-width:1200px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:780px){
   .ham-btn{display:flex;align-items:center}
@@ -292,8 +305,22 @@ textarea.fi{resize:vertical;min-height:88px}
       </div>
       <div class="g2">
         <div class="ccard">
-          <div class="ch"><div><div class="ch-t">Brak dinamikasi</div><div class="ch-s">So'nggi 6 oy</div></div><span class="ch-badge">Tendensiya</span></div>
-          <div class="cbox"><canvas id="cTrend"></canvas></div>
+          <div class="ch">
+            <div><div class="ch-t">Brak dinamikasi</div><div class="ch-s" id="trendSub">So'nggi 8 hafta</div></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="trend-tabs">
+                <button class="ttab active" id="ttab-tendensiya" onclick="setTrendMode('tendensiya')">Tendensiya</button>
+                <button class="ttab"        id="ttab-haftalik"   onclick="setTrendMode('haftalik')">Haftalik</button>
+                <button class="ttab"        id="ttab-oylik"      onclick="setTrendMode('oylik')">Oylik</button>
+                <button class="ttab"        id="ttab-model"      onclick="setTrendMode('model')">Model</button>
+                <button class="ttab"        id="ttab-sabab"      onclick="setTrendMode('sabab')">Sabab</button>
+              </div>
+            </div>
+          </div>
+          <div class="tl-total" id="trendTotal" style="display:none"></div>
+          <div id="trendSubTabs" style="display:none;margin:4px 0"></div>
+          <div class="cbox" id="trendChartBox"><canvas id="cTrend"></canvas></div>
+          <div id="trendList" style="display:none;max-height:255px;overflow-y:auto"></div>
           <div class="pct-row" id="pctRowDash"></div>
         </div>
         <div class="ccard">
@@ -706,6 +733,44 @@ document.addEventListener('click',e=>{
 const charts={};
 function destroyC(k){ if(charts[k]){ charts[k].destroy(); delete charts[k]; } }
 
+function currentWeekDays(){
+  const now=new Date(),dow=now.getDay();
+  const mon=new Date(now);
+  mon.setDate(now.getDate()+(dow===0?-6:1-dow));
+  mon.setHours(0,0,0,0);
+  return ['Du','Se','Ch','Pa','Ju','Sh','Ya'].map((lbl,i)=>{
+    const d=new Date(mon); d.setDate(mon.getDate()+i);
+    return {label:lbl,date:d.toISOString().split('T')[0]};
+  });
+}
+function currentMonthWeeks(){
+  const now=new Date(),y=now.getFullYear(),m=now.getMonth();
+  const last=new Date(y,m+1,0).getDate();
+  return [{label:'Haf 1',from:1,to:7},{label:'Haf 2',from:8,to:14},
+          {label:'Haf 3',from:15,to:21},{label:'Haf 4',from:22,to:last}]
+    .map(w=>{
+      const s=new Date(y,m,w.from),e=new Date(y,m,Math.min(w.to,last));
+      return {label:w.label,start:s.toISOString().split('T')[0],end:e.toISOString().split('T')[0]};
+    });
+}
+function weeklyTotal(data,start,end){
+  return data.filter(r=>r.date>=start&&r.date<=end).reduce((s,r)=>s+r.qty,0);
+}
+function last8weeks(){
+  const out=[],now=new Date();
+  for(let i=7;i>=0;i--){
+    const e=new Date(now); e.setDate(now.getDate()-i*7);
+    const s=new Date(e);   s.setDate(e.getDate()-6);
+    out.push({label:'Haf '+(8-i),start:s.toISOString().split('T')[0],end:e.toISOString().split('T')[0]});
+  }
+  return out;
+}
+function _top5(data,field){
+  const m={};
+  data.forEach(r=>{m[r[field]]=(m[r[field]]||0)+r.qty;});
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k])=>k);
+}
+
 function last6(){
   const out=[]; const now=new Date();
   for(let i=5;i>=0;i--){
@@ -764,6 +829,260 @@ const baseScales=()=>({
   y:{grid:{color:GRID},ticks:{color:TC,font:{size:10}},beginAtZero:true}
 });
 
+// ── TREND CHART ────────────────────────────────────────────
+const LINE_COLORS=['#4f8ef7','#2ed573','#ff6b35','#ffd43b','#9c6af8'];
+let _trendMode='tendensiya';
+let _msSubMode='haftalik';
+
+function setTrendMode(m){
+  _trendMode=m;
+  ['tendensiya','haftalik','oylik','model','sabab'].forEach(k=>{
+    const b=document.getElementById('ttab-'+k);
+    if(b) b.classList.toggle('active',k===m);
+  });
+  renderTrend(getData());
+}
+
+function setMsSubMode(m){
+  _msSubMode=m;
+  document.querySelectorAll('.ms-stab').forEach(b=>b.classList.toggle('active',b.dataset.m===m));
+  renderTrend(getData());
+}
+
+function _makePtLbl(total){
+  return {id:'ptLbl',afterDatasetsDraw(c){
+    const ctx=c.ctx;
+    c.data.datasets.forEach((ds,i)=>{
+      c.getDatasetMeta(i).data.forEach((pt,j)=>{
+        const v=ds.data[j]; if(v==null||v===0) return;
+        const pct=total>0?((v/total)*100).toFixed(0):'0';
+        const txt=v+' ('+pct+'%)';
+        ctx.save(); ctx.fillStyle='#c8c8e8';
+        ctx.font='bold 10px Segoe UI,sans-serif';
+        ctx.textAlign='center'; ctx.textBaseline='bottom';
+        ctx.fillText(txt,pt.x,pt.y-7); ctx.restore();
+      });
+    });
+  }};
+}
+
+function _makeMultiPtLbl(weekTotals){
+  return {id:'multiPtLbl',afterDatasetsDraw(c){
+    const ctx=c.ctx;
+    const nds=c.data.datasets.length;
+    const npts=(c.data.datasets[0]?.data.length)||0;
+    const fontSize=nds>=5?8:9;
+    const lineH=fontSize+5;
+    const ca=c.chartArea;
+    for(let j=0;j<npts;j++){
+      const col=[];
+      c.data.datasets.forEach((ds,di)=>{
+        const v=ds.data[j]; if(v==null||v===0) return;
+        const pt=c.getDatasetMeta(di).data[j];
+        const tot=weekTotals[j]||0;
+        const pct=tot>0?((v/tot)*100).toFixed(0):'0';
+        col.push({pt,v,pct,color:ds.borderColor||'#c8c8e8'});
+      });
+      if(!col.length) continue;
+      col.sort((a,b)=>a.pt.y-b.pt.y);
+      const n=col.length;
+      const centerY=col.reduce((s,x)=>s+x.pt.y,0)/n-lineH;
+      const totalH=(n-1)*lineH;
+      const rawStart=centerY-totalH/2;
+      const startY=Math.max(ca.top+lineH/2,Math.min(ca.bottom-lineH/2-totalH,rawStart));
+      col.forEach(({pt,v,pct,color},k)=>{
+        const ly=Math.max(ca.top+4,Math.min(ca.bottom-4,startY+k*lineH));
+        ctx.save(); ctx.fillStyle=color;
+        ctx.font='bold '+fontSize+'px Segoe UI,sans-serif';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(v+' ('+pct+'%)',pt.x,ly); ctx.restore();
+      });
+    }
+  }};
+}
+
+function renderTrend(data){
+  const subEl=document.getElementById('trendSub');
+  const totEl=document.getElementById('trendTotal');
+  const boxEl=document.getElementById('trendChartBox');
+  const lstEl=document.getElementById('trendList');
+  const pctEl=document.getElementById('pctRowDash');
+  const stEl=document.getElementById('trendSubTabs');
+
+  // ── Tendensiya: 6-month line + pct chips ──
+  if(_trendMode==='tendensiya'){
+    subEl.textContent="So'nggi 6 oy";
+    totEl.style.display='none'; boxEl.style.display='block';
+    lstEl.style.display='none'; pctEl.style.display=''; stEl.style.display='none';
+    destroyC('trend'); destroyC('trendM'); destroyC('trendS');
+    const months=last6();
+    charts.trend=new Chart(document.getElementById('cTrend').getContext('2d'),{
+      type:'line',
+      data:{labels:months.map(m=>m.label),datasets:[{
+        label:'Braklar',data:months.map(m=>monthlyTotal(data,m.y,m.m)),
+        borderColor:'#4f8ef7',backgroundColor:'rgba(79,142,247,.1)',
+        borderWidth:2.5,pointBackgroundColor:'#4f8ef7',pointRadius:4,fill:true,tension:.4
+      }]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:baseScales()}
+    });
+    pctEl.innerHTML=calcPctChips(data);
+
+  // ── Haftalik: current week Mon-Sun line ──
+  } else if(_trendMode==='haftalik'){
+    const wdays=currentWeekDays();
+    const today=new Date().toISOString().split('T')[0];
+    const fd=new Date(wdays[0].date+'T00:00:00'),ld=new Date(wdays[6].date+'T00:00:00');
+    subEl.textContent='Bu hafta: '+fd.getDate()+'-'+ld.getDate()+' '+UZ_MONTHS[ld.getMonth()];
+    totEl.style.display='none'; boxEl.style.display='block';
+    lstEl.style.display='none'; pctEl.innerHTML=''; stEl.style.display='none';
+    destroyC('trend'); destroyC('trendM'); destroyC('trendS');
+    const vals=wdays.map(d=>d.date>today?null:data.filter(r=>r.date===d.date).reduce((s,r)=>s+r.qty,0));
+    const wkTotal=vals.reduce((s,v)=>s+(v||0),0);
+    charts.trend=new Chart(document.getElementById('cTrend').getContext('2d'),{
+      type:'line',
+      data:{labels:wdays.map(d=>d.label),datasets:[{
+        data:vals,
+        borderColor:'#4f8ef7',backgroundColor:'rgba(79,142,247,.1)',
+        borderWidth:2.5,fill:true,tension:.4,spanGaps:false,
+        pointBackgroundColor:wdays.map(d=>d.date===today?'#ff4757':'#4f8ef7'),
+        pointRadius:wdays.map(d=>d.date===today?6:4)
+      }]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:baseScales()},
+      plugins:[_makePtLbl(wkTotal)]
+    });
+    const chips=[];
+    for(let i=0;i<vals.length-1;i++){
+      const v1=vals[i],v2=vals[i+1];
+      if(v1===null||v2===null) continue;
+      if(v1===0&&v2===0) continue;
+      let base=v1;
+      if(base===0){
+        for(let k=i-1;k>=0;k--){
+          if(vals[k]!==null&&vals[k]>0){base=vals[k];break;}
+        }
+      }
+      let cls='pc-n',pctTxt='0%';
+      if(v2===0){cls='pc-g';pctTxt='-100% ↓';}
+      else if(!base){cls='pc-r';pctTxt='+100% ↑';}
+      else{
+        const diff=Math.round(((v2-base)/base)*100);
+        if(diff>0){cls='pc-r';pctTxt='+'+diff+'% ↑';}
+        else if(diff<0){cls='pc-g';pctTxt=diff+'% ↓';}
+      }
+      chips.push(`<div class="pct-chip ${cls}"><span class="pct-lbl">${wdays[i].label} → ${wdays[i+1].label}</span><span class="pct-val">${pctTxt}</span></div>`);
+    }
+    pctEl.innerHTML=chips.join('');
+    pctEl.style.display=chips.length?'':'none';
+
+  // ── Oylik: two side-by-side charts (top5 Model + top5 Sabab) ──
+  } else if(_trendMode==='oylik'){
+    const now=new Date();
+    subEl.textContent='Bu oy: '+UZ_MONTHS[now.getMonth()]+' '+now.getFullYear();
+    totEl.style.display='none'; boxEl.style.display='none';
+    pctEl.style.display='none'; pctEl.innerHTML=''; stEl.style.display='none';
+    destroyC('trend'); destroyC('trendM'); destroyC('trendS');
+    const mweeks=currentMonthWeeks();
+    const wkTotals=mweeks.map(w=>weeklyTotal(data,w.start,w.end));
+    const top5m=_top5(data,'sku');
+    const top5r=_top5(data,'reason');
+    const mkDs=(keys,field)=>keys.map((k,i)=>({
+      label:k,
+      data:mweeks.map(w=>data.filter(r=>r.date>=w.start&&r.date<=w.end&&r[field]===k).reduce((s,r)=>s+r.qty,0)),
+      borderColor:LINE_COLORS[i],backgroundColor:LINE_COLORS[i]+'22',
+      borderWidth:2,pointBackgroundColor:LINE_COLORS[i],pointRadius:4,fill:false,tension:.4
+    }));
+    const mkLbl=(keys,colors,dsets)=>{
+      const vals=dsets.map(ds=>ds.data.reduce((s,v)=>s+v,0));
+      const tot=vals.reduce((s,v)=>s+v,0);
+      return '<div style="display:flex;flex-wrap:wrap;gap:4px 8px;padding:5px 2px 0">'+
+        keys.map((k,i)=>{const v=vals[i],pct=tot>0?((v/tot)*100).toFixed(0):'0';
+          return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--text);white-space:nowrap"><span style="width:7px;height:7px;border-radius:1px;background:${colors[i]};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
+        }).join('')+'</div>';
+    };
+    const dsM=mkDs(top5m,'sku');
+    const dsR=mkDs(top5r,'reason');
+    lstEl.style.display='block';
+    lstEl.innerHTML=`<div style="display:flex;gap:12px">
+      <div style="flex:1;min-width:0"><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:4px;text-align:center">Model</div><div style="height:175px"><canvas id="cTrendM"></canvas></div><div id="oylik-lbl-m"></div></div>
+      <div style="flex:1;min-width:0"><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:4px;text-align:center">Sabab</div><div style="height:175px"><canvas id="cTrendS"></canvas></div><div id="oylik-lbl-s"></div></div>
+    </div>`;
+    const mkOpts=(totals)=>({responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>{
+          const v=ctx.parsed.y;
+          const tot=(totals||[])[ctx.dataIndex]||0;
+          const pct=tot>0?((v/tot)*100).toFixed(0):'0';
+          return ctx.dataset.label+': '+v+' ('+pct+'%)';
+        }}}
+      },
+      scales:baseScales()});
+    charts.trendM=new Chart(document.getElementById('cTrendM').getContext('2d'),{
+      type:'line',data:{labels:mweeks.map(w=>w.label),datasets:dsM},
+      options:mkOpts(wkTotals)
+    });
+    charts.trendS=new Chart(document.getElementById('cTrendS').getContext('2d'),{
+      type:'line',data:{labels:mweeks.map(w=>w.label),datasets:dsR},
+      options:mkOpts(wkTotals)
+    });
+    document.getElementById('oylik-lbl-m').innerHTML=mkLbl(top5m,LINE_COLORS,dsM);
+    document.getElementById('oylik-lbl-s').innerHTML=mkLbl(top5r,LINE_COLORS,dsR);
+
+  // ── Model / Sabab: multi-line chart with Haftalik/Oylik sub-tabs ──
+  } else {
+    destroyC('trend'); destroyC('trendM'); destroyC('trendS');
+    boxEl.style.display='block'; pctEl.style.display='none'; pctEl.innerHTML='';
+    const field=_trendMode==='model'?'sku':'reason';
+    const top5=_top5(data,field);
+    stEl.style.display='block';
+    stEl.innerHTML=`<div class="trend-tabs" style="display:inline-flex">
+      <button class="ttab ms-stab${_msSubMode==='haftalik'?' active':''}" data-m="haftalik" onclick="setMsSubMode('haftalik')">Haftalik</button>
+      <button class="ttab ms-stab${_msSubMode==='oylik'?' active':''}" data-m="oylik" onclick="setMsSubMode('oylik')">Oylik</button>
+    </div>`;
+    let weeks;
+    if(_msSubMode==='haftalik'){
+      weeks=last8weeks();
+      subEl.textContent="So'nggi 8 hafta";
+    } else {
+      weeks=currentMonthWeeks();
+      const now=new Date();
+      subEl.textContent='Bu oy: '+UZ_MONTHS[now.getMonth()]+' '+now.getFullYear();
+    }
+    const wkTotals=weeks.map(w=>weeklyTotal(data,w.start,w.end));
+    const total=data.reduce((s,r)=>s+r.qty,0);
+    totEl.textContent='Jami brak: '+total; totEl.style.display='block';
+    const datasets=top5.map((k,i)=>({
+      label:k,
+      data:weeks.map(w=>data.filter(r=>r.date>=w.start&&r.date<=w.end&&r[field]===k).reduce((s,r)=>s+r.qty,0)),
+      borderColor:LINE_COLORS[i],backgroundColor:LINE_COLORS[i]+'22',
+      borderWidth:2,pointBackgroundColor:LINE_COLORS[i],pointRadius:4,fill:false,tension:.4
+    }));
+    const legendVals=datasets.map(ds=>ds.data.reduce((s,v)=>s+v,0));
+    const legendTot=legendVals.reduce((s,v)=>s+v,0);
+    lstEl.style.display='block';
+    lstEl.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:5px 10px;padding:6px 2px 2px">'+
+      top5.map((k,i)=>{const v=legendVals[i],pct=legendTot>0?((v/legendTot)*100).toFixed(0):'0';
+        return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:${LINE_COLORS[i]};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
+      }).join('')+'</div>';
+    destroyC('trend');
+    charts.trend=new Chart(document.getElementById('cTrend').getContext('2d'),{
+      type:'line',
+      data:{labels:weeks.map(w=>w.label),datasets},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:ctx=>{
+            const v=ctx.parsed.y;
+            const tot=(wkTotals||[])[ctx.dataIndex]||0;
+            const pct=tot>0?((v/tot)*100).toFixed(0):'0';
+            return ctx.dataset.label+': '+v+' ('+pct+'%)';
+          }}}
+        },
+        scales:baseScales()}
+    });
+  }
+}
+
 // ── DASHBOARD ──────────────────────────────────────────────
 function renderDash(){
   const data=getData(); const now=new Date();
@@ -772,7 +1091,7 @@ function renderDash(){
   document.getElementById('k-today').textContent=
     data.filter(r=>r.date===today).reduce((s,r)=>s+r.qty,0);
   document.getElementById('k-month').textContent=
-    data.filter(r=>{const d=new Date(r.date);return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();}).reduce((s,r)=>s+r.qty,0);
+    data.filter(r=>{const d=new Date(r.date+'T00:00:00');return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();}).reduce((s,r)=>s+r.qty,0);
 
   const topMod=topNmodels(data,1);
   document.getElementById('k-sku').textContent=topMod[0]?.total>0?topMod[0].name:'—';
@@ -780,20 +1099,7 @@ function renderDash(){
   const topReason=REASONS.map(r=>({r,t:reasonTotal(data,r)})).sort((a,b)=>b.t-a.t);
   document.getElementById('k-reason').textContent=topReason[0]?.t>0?topReason[0].r:'—';
 
-  // Trend
-  destroyC('trend');
-  const months=last6();
-  charts.trend=new Chart(document.getElementById('cTrend').getContext('2d'),{
-    type:'line',
-    data:{labels:months.map(m=>m.label),datasets:[{
-      label:'Nuqsonlar',data:months.map(m=>monthlyTotal(data,m.y,m.m)),
-      borderColor:'#4f8ef7',backgroundColor:'rgba(79,142,247,.1)',
-      borderWidth:2.5,pointBackgroundColor:'#4f8ef7',pointRadius:4,fill:true,tension:.4
-    }]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:baseScales()}
-  });
-
-  document.getElementById('pctRowDash').innerHTML=calcPctChips(data);
+  renderTrend(data);
 
   // Top 5 doughnut
   destroyC('sku');
