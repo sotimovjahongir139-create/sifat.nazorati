@@ -1,0 +1,94 @@
+/* Sifat Nazorati — API client (in-memory JWT) */
+'use strict';
+
+const API_BASE = '/api';
+
+// ── TOKEN IN MEMORY (never in localStorage) ─────────────────
+let _token = null;
+let _currentUser = null;
+
+function getToken()      { return _token; }
+function setToken(t)     { _token = t; }
+function getStoredUser() { return _currentUser; }
+function setStoredUser(u){ _currentUser = u; }
+function clearAuth()     { _token = null; _currentUser = null; }
+
+// ── CORE FETCH ──────────────────────────────────────────────
+async function apiFetch(path, opts = {}) {
+  const token = getToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(opts.headers || {}),
+  };
+
+  let body;
+  if (opts.body !== undefined) {
+    body = JSON.stringify(opts.body);
+  }
+
+  const res = await fetch(API_BASE + path, { ...opts, headers, body });
+
+  if (res.status === 401) {
+    clearAuth();
+    showLogin();
+    return;
+  }
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Server xatosi');
+  return data;
+}
+
+// ── AUTH ────────────────────────────────────────────────────
+async function apiLogin(username, password) {
+  const data = await apiFetch('/auth/login', { method: 'POST', body: { username, password } });
+  setToken(data.token);
+  setStoredUser(data.user);
+  return data;
+}
+
+async function apiMe() {
+  return apiFetch('/auth/me');
+}
+
+// ── DEFECTS ─────────────────────────────────────────────────
+async function apiGetDefects(params = {}) {
+  const q = new URLSearchParams(params).toString();
+  return apiFetch('/defects' + (q ? '?' + q : ''));
+}
+
+async function apiPostDefect(entry) {
+  return apiFetch('/defects', { method: 'POST', body: entry });
+}
+
+async function apiDeleteDefect(id) {
+  return apiFetch('/defects/' + id, { method: 'DELETE' });
+}
+
+// ── ANALYTICS ───────────────────────────────────────────────
+async function apiGetDashboard() {
+  return apiFetch('/stats/dashboard');
+}
+
+async function apiGetTopModels() {
+  return apiFetch('/stats/top-models');
+}
+
+// ── MODELS (distinct SKU list) ───────────────────────────────
+async function apiGetModels() {
+  return apiFetch('/models');
+}
+
+// ── USERS (admin only) ──────────────────────────────────────
+async function apiGetUsers() {
+  return apiFetch('/users');
+}
+
+async function apiPostUser(user) {
+  return apiFetch('/users', { method: 'POST', body: user });
+}
+
+async function apiDeleteUser(id) {
+  return apiFetch('/users/' + id, { method: 'DELETE' });
+}
