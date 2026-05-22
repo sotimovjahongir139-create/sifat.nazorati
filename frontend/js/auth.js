@@ -26,7 +26,6 @@ function showApp(user) {
   document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = user.role === 'admin' ? '' : 'none';
   });
-  initSkuDrop();
   goPage('dash');
 }
 

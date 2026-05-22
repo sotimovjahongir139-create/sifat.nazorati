@@ -64,59 +64,148 @@ async function goPage(name) {
   }
 }
 
-// ── SEARCHABLE DROPDOWN ─────────────────────────────────────
-let _skuOpen = false;
+// ── MODEL PICKER ─────────────────────────────────────────────
+const MP_DATA = {
+  Padosh: {
+    models: ['Brunelli cucunelli','9092','1603-siliq','1603-yozuvli','2283','3316','Heval','23338','2099','Tomford','1207','2104'],
+    colors: [{name:"qora",hex:"#1a1a1a"},{name:"ko'k",hex:"#1a5fb4"},{name:"oq",hex:"#f0f0f0"},{name:"jigarrang",hex:"#7b4f2e"},{name:"bardovый",hex:"#800020"}]
+  },
+  Stilka: {
+    models: ['6668','9092','2104','23338','2099','Tomford','1603-siliq','1603-yozuvli'],
+    colors: [{name:"qora",hex:"#1a1a1a"},{name:"ko'k",hex:"#1a5fb4"},{name:"oq",hex:"#f0f0f0"},{name:"jigarrang",hex:"#7b4f2e"},{name:"bardovый",hex:"#800020"}]
+  }
+};
 
-function initSkuDrop() {
-  const container = document.getElementById('ssItems');
-  container.innerHTML = MODELS.map(m =>
-    `<div class="ss-item" data-val="${m}">${m}</div>`
+let _mpCat = null, _mpModel = null;
+
+function _mpGetCustom() {
+  try { return JSON.parse(localStorage.getItem('mp_custom') || '{"models":[],"colors":{}}'); } catch { return {models:[],colors:{}}; }
+}
+function _mpSaveCustom(d) { localStorage.setItem('mp_custom', JSON.stringify(d)); }
+
+function _mpGetModels(cat) {
+  const base = [...(MP_DATA[cat]?.models || [])];
+  const custom = _mpGetCustom();
+  custom.models.filter(m => m.cat === cat).forEach(m => { if (!base.includes(m.name)) base.push(m.name); });
+  return base;
+}
+function _mpGetColors(cat, model) {
+  const base = [...(MP_DATA[cat]?.colors || [])];
+  const custom = _mpGetCustom();
+  const key = cat + '/' + model;
+  (custom.colors[key] || []).forEach(c => { if (!base.find(b => b.name === c.name)) base.push(c); });
+  return base;
+}
+
+function selectMpCat(cat) {
+  _mpCat = cat; _mpModel = null;
+  document.querySelectorAll('.mp-cat-btn').forEach(b => b.classList.toggle('active', b.id === 'mpBtn-' + cat));
+  document.getElementById('mpStep2').style.display = 'block';
+  document.getElementById('mpStep3').style.display = 'none';
+  document.getElementById('mpSearch').value = '';
+  renderMpModels('');
+}
+
+function renderMpModels(q) {
+  const models = _mpGetModels(_mpCat);
+  const filtered = q ? models.filter(m => m.toLowerCase().includes(q.toLowerCase())) : models;
+  document.getElementById('mpModelList').innerHTML = filtered.map(m =>
+    `<div class="mp-model-item" onclick="selectMpModel(this,'${m.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')"><i class="fas fa-shoe-prints" style="font-size:10px;opacity:.4;margin-right:6px"></i>${m}</div>`
   ).join('');
-  container.addEventListener('click', e => {
-    const item = e.target.closest('.ss-item');
-    if (item) pickSku(item.dataset.val);
-  });
-  document.getElementById('ssCount').textContent = MODELS.length + ' ta model';
+  const addEl = document.getElementById('mpAddNew');
+  const exact = models.find(m => m.toLowerCase() === q.toLowerCase());
+  if (q && !exact) {
+    document.getElementById('mpAddName').textContent = q;
+    addEl.style.display = 'block';
+  } else {
+    addEl.style.display = 'none';
+  }
 }
 
-function openSkuDrop() {
-  if (_skuOpen) return;
-  _skuOpen = true;
-  document.getElementById('skuDrop').classList.add('open');
-  document.getElementById('ssChev').classList.add('up');
+function filterMpModels() {
+  renderMpModels(document.getElementById('mpSearch').value.trim());
 }
-function closeSkuDrop() {
-  _skuOpen = false;
-  document.getElementById('skuDrop').classList.remove('open');
-  document.getElementById('ssChev').classList.remove('up');
-}
-function toggleSkuDrop() { _skuOpen ? closeSkuDrop() : openSkuDrop(); }
 
-function pickSku(val) {
+function selectMpModel(el, model) {
+  _mpModel = model;
+  document.getElementById('mpStep2').style.display = 'none';
+  document.getElementById('mpStep3').style.display = 'block';
+  document.getElementById('mpModelName').textContent = _mpCat + ' — ' + model;
+  renderMpColors();
+}
+
+function renderMpColors() {
+  const colors = _mpGetColors(_mpCat, _mpModel);
+  document.getElementById('mpColorList').innerHTML = colors.map(c =>
+    `<div class="mp-color-item" onclick="selectMpColor('${c.name.replace(/'/g,"\\'")}','${c.hex}')">
+      <span class="mp-color-dot" style="background:${c.hex}${c.name==='oq'?';border-color:rgba(255,255,255,.35)':''}"></span>${c.name}
+    </div>`
+  ).join('');
+}
+
+function selectMpColor(name, hex) {
+  const val = _mpCat + ' - ' + _mpModel + ' - ' + name;
   document.getElementById('eSku').value = val;
-  document.getElementById('skuSearch').value = val;
-  document.querySelectorAll('#ssItems .ss-item').forEach(el => el.classList.remove('sel'));
-  const found = document.querySelector(`#ssItems .ss-item[data-val="${val}"]`);
-  if (found) { found.classList.add('sel'); found.scrollIntoView({ block: 'nearest' }); }
-  closeSkuDrop();
+  document.getElementById('mpStep1').style.display = 'none';
+  document.getElementById('mpStep2').style.display = 'none';
+  document.getElementById('mpStep3').style.display = 'none';
+  const selEl = document.getElementById('mpSelected');
+  document.getElementById('mpSelectedText').textContent = val;
+  selEl.style.display = 'flex';
 }
 
-function filterSku() {
-  const q = document.getElementById('skuSearch').value.toLowerCase();
-  let shown = 0;
-  document.querySelectorAll('#ssItems .ss-item').forEach(el => {
-    const match = el.dataset.val.toLowerCase().includes(q);
-    el.style.display = match ? '' : 'none';
-    if (match) shown++;
+function mpGoBack(toStep) {
+  if (toStep === 1) {
+    _mpModel = null; _mpCat = null;
+    document.getElementById('mpStep2').style.display = 'none';
+    document.getElementById('mpStep3').style.display = 'none';
+    document.querySelectorAll('.mp-cat-btn').forEach(b => b.classList.remove('active'));
+  } else if (toStep === 2) {
+    _mpModel = null;
+    document.getElementById('mpStep3').style.display = 'none';
+    document.getElementById('mpStep2').style.display = 'block';
+  }
+}
+
+function resetModelPicker() {
+  _mpCat = null; _mpModel = null;
+  document.getElementById('eSku').value = '';
+  document.getElementById('mpSelected').style.display = 'none';
+  document.getElementById('mpStep1').style.display = 'block';
+  document.getElementById('mpStep2').style.display = 'none';
+  document.getElementById('mpStep3').style.display = 'none';
+  document.querySelectorAll('.mp-cat-btn').forEach(b => b.classList.remove('active'));
+}
+
+function addCustomModel() {
+  const name = document.getElementById('mpSearch').value.trim();
+  if (!name || !_mpCat) return;
+  const custom = _mpGetCustom();
+  if (!custom.models.find(m => m.name === name && m.cat === _mpCat)) {
+    custom.models.push({ name, cat: _mpCat });
+    _mpSaveCustom(custom);
+  }
+  document.getElementById('mpModelList').querySelectorAll('.mp-model-item').forEach(el => {
+    if (el.textContent.trim() === name) selectMpModel(el, name);
   });
-  document.getElementById('ssNone').style.display  = shown === 0 ? 'block' : 'none';
-  document.getElementById('ssCount').textContent = shown + ' ta model';
-  if (!_skuOpen) openSkuDrop();
+  selectMpModel(null, name);
 }
 
-document.addEventListener('click', e => {
-  if (_skuOpen && !e.target.closest('.ss-wrap')) closeSkuDrop();
-});
+function addCustomColor() {
+  const name = document.getElementById('mpColorName').value.trim();
+  const hex  = document.getElementById('mpColorPicker').value;
+  if (!name || !_mpCat || !_mpModel) return;
+  const custom = _mpGetCustom();
+  const key = _mpCat + '/' + _mpModel;
+  if (!custom.colors[key]) custom.colors[key] = [];
+  if (!custom.colors[key].find(c => c.name === name)) {
+    custom.colors[key].push({ name, hex });
+    _mpSaveCustom(custom);
+    document.getElementById('mpColorName').value = '';
+    renderMpColors();
+    toast("Rang qo'shildi!", 's');
+  }
+}
 
 // ── DASHBOARD ───────────────────────────────────────────────
 function renderDash() {
@@ -183,18 +272,13 @@ function renderDash() {
 
 // ── ENTRY FORM ──────────────────────────────────────────────
 function setupForm() {
-  document.getElementById('eDate').value    = new Date().toISOString().split('T')[0];
-  document.getElementById('skuSearch').value = '';
-  document.getElementById('eSku').value     = '';
-  document.getElementById('eReason').value  = '';
-  document.getElementById('eCat').value     = '';
-  document.getElementById('eQty').value     = '';
-  document.getElementById('eNotes').value   = '';
+  document.getElementById('eDate').value   = new Date().toISOString().split('T')[0];
+  document.getElementById('eReason').value = '';
+  document.getElementById('eCat').value    = '';
+  document.getElementById('eQty').value    = '';
+  document.getElementById('eNotes').value  = '';
   document.getElementById('succMsg').style.display = 'none';
-  closeSkuDrop();
-  document.querySelectorAll('#ssItems .ss-item').forEach(el => { el.classList.remove('sel'); el.style.display = ''; });
-  document.getElementById('ssNone').style.display  = 'none';
-  document.getElementById('ssCount').textContent = MODELS.length + ' ta model';
+  resetModelPicker();
 }
 
 async function saveEntry() {

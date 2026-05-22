@@ -173,8 +173,25 @@ const baseScales = () => ({
 
 // ── TREND CHART ────────────────────────────────────────────
 const LINE_COLORS = ['#4f8ef7','#2ed573','#ff6b35','#ffd43b','#9c6af8'];
-let _trendMode  = 'tendensiya';
-let _msSubMode  = 'haftalik';
+let _trendMode    = 'tendensiya';
+let _msSubMode    = 'haftalik';
+let _weekNavOffset = 0;
+
+function getOffsetWeekDays(offset) {
+  const now = new Date(), dow = now.getDay();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() + (dow === 0 ? -6 : 1 - dow) + offset * 7);
+  mon.setHours(0, 0, 0, 0);
+  return ['Du','Se','Ch','Pa','Ju','Sh','Ya'].map((lbl, i) => {
+    const d = new Date(mon); d.setDate(mon.getDate() + i);
+    return { label: lbl, date: d.toISOString().split('T')[0] };
+  });
+}
+
+function navWeek(delta) {
+  _weekNavOffset = (delta === 0) ? 0 : _weekNavOffset + delta;
+  renderTrend(getData());
+}
 
 function setTrendMode(m) {
   _trendMode = m;
@@ -187,6 +204,7 @@ function setTrendMode(m) {
 
 function setMsSubMode(m) {
   _msSubMode = m;
+  _weekNavOffset = 0;
   document.querySelectorAll('.ms-stab').forEach(b => b.classList.toggle('active', b.dataset.m === m));
   renderTrend(getData());
 }
@@ -369,52 +387,107 @@ function renderTrend(data) {
     boxEl.style.display = 'block'; pctEl.style.display = 'none'; pctEl.innerHTML = '';
     const field = _trendMode === 'model' ? 'sku' : 'reason';
     const top5  = _top5(data, field);
-    stEl.style.display = 'block';
-    stEl.innerHTML = `<div class="trend-tabs" style="display:inline-flex">
-      <button class="ttab ms-stab${_msSubMode === 'haftalik' ? ' active' : ''}" data-m="haftalik" onclick="setMsSubMode('haftalik')">Haftalik</button>
-      <button class="ttab ms-stab${_msSubMode === 'oylik'   ? ' active' : ''}" data-m="oylik"    onclick="setMsSubMode('oylik')">Oylik</button>
-    </div>`;
-    let weeks;
+
     if (_msSubMode === 'haftalik') {
-      weeks = last8weeks(); subEl.textContent = "So'nggi 8 hafta";
+      const wdays = getOffsetWeekDays(_weekNavOffset);
+      const fd = new Date(wdays[0].date + 'T00:00:00');
+      const ld = new Date(wdays[6].date + 'T00:00:00');
+      const fdStr = fd.getDate() + ' ' + UZ_MONTHS[fd.getMonth()];
+      const ldStr = ld.getDate() + ' ' + UZ_MONTHS[ld.getMonth()] + ' ' + ld.getFullYear();
+      subEl.textContent = fdStr + ' — ' + ldStr;
+
+      stEl.style.display = 'block';
+      stEl.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:4px">
+        <div class="trend-tabs" style="display:inline-flex">
+          <button class="ttab ms-stab active" data-m="haftalik" onclick="setMsSubMode('haftalik')">Haftalik</button>
+          <button class="ttab ms-stab" data-m="oylik" onclick="setMsSubMode('oylik')">Oylik</button>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="ttab" onclick="navWeek(-1)">← Oldingi hafta</button>
+          ${_weekNavOffset < 0 ? '<button class="ttab" style="background:rgba(79,142,247,.2);color:var(--blue)" onclick="navWeek(0)">Joriy hafta</button>' : ''}
+        </div>
+      </div>`;
+
+      const wkTotals = wdays.map(d => data.filter(r => r.date === d.date).reduce((s, r) => s + r.qty, 0));
+      const total = data.reduce((s, r) => s + r.qty, 0);
+      totEl.textContent = 'Jami brak: ' + total; totEl.style.display = 'block';
+
+      const datasets = top5.map((k, i) => ({
+        label: k,
+        data: wdays.map(d => data.filter(r => r.date === d.date && r[field] === k).reduce((s, r) => s + r.qty, 0)),
+        borderColor: LINE_COLORS[i], backgroundColor: LINE_COLORS[i] + '22',
+        borderWidth: 2, pointBackgroundColor: LINE_COLORS[i], pointRadius: 4, fill: false, tension: .4
+      }));
+      const legendVals = datasets.map(ds => ds.data.reduce((s, v) => s + v, 0));
+      const legendTot  = legendVals.reduce((s, v) => s + v, 0);
+      lstEl.style.display = 'block';
+      lstEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px 10px;padding:6px 2px 2px">' +
+        top5.map((k, i) => { const v = legendVals[i], pct = legendTot > 0 ? ((v / legendTot) * 100).toFixed(0) : '0';
+          return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:${LINE_COLORS[i]};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
+        }).join('') + '</div>';
+      destroyC('trend');
+      charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
+        type: 'line',
+        data: { labels: wdays.map(w => w.label), datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => {
+              const v   = ctx.parsed.y;
+              const tot = wkTotals[ctx.dataIndex] || 0;
+              const pct = tot > 0 ? ((v / tot) * 100).toFixed(0) : '0';
+              return ctx.dataset.label + ': ' + v + ' (' + pct + '%)';
+            }}}
+          },
+          scales: baseScales()
+        }
+      });
+
     } else {
-      weeks = currentMonthWeeks();
-      const now = new Date(); subEl.textContent = 'Bu oy: ' + UZ_MONTHS[now.getMonth()] + ' ' + now.getFullYear();
+      const now = new Date();
+      subEl.textContent = 'Bu oy: ' + UZ_MONTHS[now.getMonth()] + ' ' + now.getFullYear();
+      stEl.style.display = 'block';
+      stEl.innerHTML = `<div class="trend-tabs" style="display:inline-flex">
+        <button class="ttab ms-stab" data-m="haftalik" onclick="setMsSubMode('haftalik')">Haftalik</button>
+        <button class="ttab ms-stab active" data-m="oylik" onclick="setMsSubMode('oylik')">Oylik</button>
+      </div>`;
+      const weeks    = currentMonthWeeks();
+      const wkTotals = weeks.map(w => weeklyTotal(data, w.start, w.end));
+      const total    = data.reduce((s, r) => s + r.qty, 0);
+      totEl.textContent = 'Jami brak: ' + total; totEl.style.display = 'block';
+      const datasets = top5.map((k, i) => ({
+        label: k,
+        data: weeks.map(w => data.filter(r => r.date >= w.start && r.date <= w.end && r[field] === k).reduce((s, r) => s + r.qty, 0)),
+        borderColor: LINE_COLORS[i], backgroundColor: LINE_COLORS[i] + '22',
+        borderWidth: 2, pointBackgroundColor: LINE_COLORS[i], pointRadius: 4, fill: false, tension: .4
+      }));
+      const legendVals = datasets.map(ds => ds.data.reduce((s, v) => s + v, 0));
+      const legendTot  = legendVals.reduce((s, v) => s + v, 0);
+      lstEl.style.display = 'block';
+      lstEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px 10px;padding:6px 2px 2px">' +
+        top5.map((k, i) => { const v = legendVals[i], pct = legendTot > 0 ? ((v / legendTot) * 100).toFixed(0) : '0';
+          return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:${LINE_COLORS[i]};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
+        }).join('') + '</div>';
+      destroyC('trend');
+      charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
+        type: 'line',
+        data: { labels: weeks.map(w => w.label), datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => {
+              const v   = ctx.parsed.y;
+              const tot = (wkTotals || [])[ctx.dataIndex] || 0;
+              const pct = tot > 0 ? ((v / tot) * 100).toFixed(0) : '0';
+              return ctx.dataset.label + ': ' + v + ' (' + pct + '%)';
+            }}}
+          },
+          scales: baseScales()
+        }
+      });
     }
-    const wkTotals = weeks.map(w => weeklyTotal(data, w.start, w.end));
-    const total    = data.reduce((s, r) => s + r.qty, 0);
-    totEl.textContent = 'Jami brak: ' + total; totEl.style.display = 'block';
-    const datasets = top5.map((k, i) => ({
-      label: k,
-      data: weeks.map(w => data.filter(r => r.date >= w.start && r.date <= w.end && r[field] === k).reduce((s, r) => s + r.qty, 0)),
-      borderColor: LINE_COLORS[i], backgroundColor: LINE_COLORS[i] + '22',
-      borderWidth: 2, pointBackgroundColor: LINE_COLORS[i], pointRadius: 4, fill: false, tension: .4
-    }));
-    const legendVals = datasets.map(ds => ds.data.reduce((s, v) => s + v, 0));
-    const legendTot  = legendVals.reduce((s, v) => s + v, 0);
-    lstEl.style.display = 'block';
-    lstEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px 10px;padding:6px 2px 2px">' +
-      top5.map((k, i) => { const v = legendVals[i], pct = legendTot > 0 ? ((v / legendTot) * 100).toFixed(0) : '0';
-        return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:${LINE_COLORS[i]};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
-      }).join('') + '</div>';
-    destroyC('trend');
-    charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
-      type: 'line',
-      data: { labels: weeks.map(w => w.label), datasets },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: ctx => {
-            const v   = ctx.parsed.y;
-            const tot = (wkTotals || [])[ctx.dataIndex] || 0;
-            const pct = tot > 0 ? ((v / tot) * 100).toFixed(0) : '0';
-            return ctx.dataset.label + ': ' + v + ' (' + pct + '%)';
-          }}}
-        },
-        scales: baseScales()
-      }
-    });
   }
 }
 
