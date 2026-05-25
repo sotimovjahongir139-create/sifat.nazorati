@@ -36,6 +36,14 @@ async function runMigrations() {
     )
   `);
 
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS custom_reasons (
+      id         SERIAL PRIMARY KEY,
+      name       VARCHAR(200) UNIQUE NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
   await db.query(`CREATE INDEX IF NOT EXISTS idx_entries_date       ON entries(date)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_entries_category   ON entries(category)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_entries_created_by ON entries(created_by)`);

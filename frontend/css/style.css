@@ -197,6 +197,11 @@ textarea.fi{resize:vertical;min-height:88px}
 .tl-bar{height:100%;border-radius:3px;background:var(--blue)}
 .tl-info{font-size:12px;color:var(--text2);white-space:nowrap;min-width:95px;text-align:right;font-weight:500}
 
+/* REASON ADD */
+.reason-add-btn{background:none;border:none;color:var(--blue);font-size:11.5px;font-weight:600;cursor:pointer;padding:6px 0 0;opacity:.7;transition:opacity .15s;font-family:inherit;display:inline-flex;align-items:center;gap:5px}
+.reason-add-btn:hover{opacity:1}
+.reason-add-row{margin-top:8px;padding:12px 14px;background:rgba(79,142,247,.05);border:1px solid rgba(79,142,247,.2);border-radius:9px}
+
 /* MODEL PICKER */
 .mp-wrap{margin-top:2px}
 .mp-step{margin-top:6px}

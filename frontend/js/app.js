@@ -270,6 +270,51 @@ function renderDash() {
     </tr>`).join('');
 }
 
+// ── CUSTOM REASONS ───────────────────────────────────────────
+async function loadCustomReasons() {
+  try {
+    const reasons = await apiGetReasons();
+    const sel = document.getElementById('eReason');
+    sel.querySelectorAll('.custom-reason').forEach(o => o.remove());
+    reasons.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.name;
+      opt.textContent = r.name;
+      opt.className = 'custom-reason';
+      sel.appendChild(opt);
+    });
+  } catch { /* silent — base reasons still work */ }
+}
+
+function toggleReasonAdd() {
+  const row = document.getElementById('reasonAddRow');
+  const btn = document.getElementById('reasonAddBtn');
+  const show = row.style.display === 'none';
+  row.style.display = show ? 'block' : 'none';
+  btn.style.display  = show ? 'none'  : '';
+  if (show) document.getElementById('reasonNewText').focus();
+}
+
+function cancelNewReason() {
+  document.getElementById('reasonAddRow').style.display = 'none';
+  document.getElementById('reasonAddBtn').style.display = '';
+  document.getElementById('reasonNewText').value = '';
+}
+
+async function saveNewReason() {
+  const name = document.getElementById('reasonNewText').value.trim();
+  if (!name) { toast('Sabab nomini kiriting.', 'e'); return; }
+  try {
+    await apiPostReason(name);
+    await loadCustomReasons();
+    document.getElementById('eReason').value = name;
+    cancelNewReason();
+    toast("Yangi sabab qo'shildi!", 's');
+  } catch (err) {
+    toast(err.message || 'Xatolik yuz berdi', 'e');
+  }
+}
+
 // ── ENTRY FORM ──────────────────────────────────────────────
 function setupForm() {
   document.getElementById('eDate').value   = new Date().toISOString().split('T')[0];
@@ -278,7 +323,9 @@ function setupForm() {
   document.getElementById('eQty').value    = '';
   document.getElementById('eNotes').value  = '';
   document.getElementById('succMsg').style.display = 'none';
+  cancelNewReason();
   resetModelPicker();
+  loadCustomReasons();
 }
 
 async function saveEntry() {

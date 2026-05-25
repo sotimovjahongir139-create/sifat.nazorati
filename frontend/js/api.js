@@ -80,6 +80,14 @@ async function apiGetModels() {
   return apiFetch('/models');
 }
 
+// ── REASONS ─────────────────────────────────────────────────
+async function apiGetReasons() {
+  return apiFetch('/reasons');
+}
+async function apiPostReason(name) {
+  return apiFetch('/reasons', { method: 'POST', body: { name } });
+}
+
 // ── USERS (admin only) ──────────────────────────────────────
 async function apiGetUsers() {
   return apiFetch('/users');

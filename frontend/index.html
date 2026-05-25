@@ -198,6 +198,14 @@
               <option>Charxlaganda havo chiqib qolgan</option>
               <option>Charxlab qo'ygan</option>
             </select>
+            <div class="reason-add-row" id="reasonAddRow" style="display:none">
+              <input type="text" class="fi" id="reasonNewText" placeholder="Yangi sabab nomini kiriting..." maxlength="200" onkeydown="if(event.key==='Enter')saveNewReason();if(event.key==='Escape')cancelNewReason()">
+              <div style="display:flex;gap:7px;margin-top:8px">
+                <button type="button" class="btn-save" style="padding:9px 16px;font-size:12px" onclick="saveNewReason()"><i class="fas fa-check"></i> Saqlash</button>
+                <button type="button" class="btn-can"  style="padding:9px 14px;font-size:12px" onclick="cancelNewReason()">Bekor</button>
+              </div>
+            </div>
+            <button type="button" class="reason-add-btn" id="reasonAddBtn" onclick="toggleReasonAdd()"><i class="fas fa-plus"></i> Yangi sabab qo'shish</button>
           </div>
           <div>
             <label class="flbl">Brak turi *</label>
