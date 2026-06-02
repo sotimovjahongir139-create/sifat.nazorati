@@ -84,7 +84,7 @@ function currentWeekDays() {
   mon.setHours(0, 0, 0, 0);
   return ['Du','Se','Ch','Pa','Ju','Sh','Ya'].map((lbl, i) => {
     const d = new Date(mon); d.setDate(mon.getDate() + i);
-    return { label: lbl, date: d.toISOString().split('T')[0] };
+    return { label: lbl, date: ymdLocal(d) };
   });
 }
 function currentMonthWeeks() {
@@ -94,7 +94,7 @@ function currentMonthWeeks() {
           {label:'Haf 3',from:15,to:21},{label:'Haf 4',from:22,to:last}]
     .map(w => {
       const s = new Date(y, m, w.from), e = new Date(y, m, Math.min(w.to, last));
-      return { label: w.label, start: s.toISOString().split('T')[0], end: e.toISOString().split('T')[0] };
+      return { label: w.label, start: ymdLocal(s), end: ymdLocal(e) };
     });
 }
 function weeklyTotal(data, start, end) {
@@ -105,7 +105,7 @@ function last8weeks() {
   for (let i = 7; i >= 0; i--) {
     const e = new Date(now); e.setDate(now.getDate() - i * 7);
     const s = new Date(e);   s.setDate(e.getDate() - 6);
-    out.push({ label: 'Haf ' + (8 - i), start: s.toISOString().split('T')[0], end: e.toISOString().split('T')[0] });
+    out.push({ label: 'Haf ' + (8 - i), start: ymdLocal(s), end: ymdLocal(e) });
   }
   return out;
 }
@@ -188,7 +188,7 @@ function getOffsetWeekDays(offset) {
   mon.setHours(0, 0, 0, 0);
   return ['Du','Se','Ch','Pa','Ju','Sh','Ya'].map((lbl, i) => {
     const d = new Date(mon); d.setDate(mon.getDate() + i);
-    return { label: lbl, date: d.toISOString().split('T')[0] };
+    return { label: lbl, date: ymdLocal(d) };
   });
 }
 
@@ -292,7 +292,7 @@ function renderTrend(data) {
   // ── Haftalik ──
   } else if (_trendMode === 'haftalik') {
     const wdays = currentWeekDays();
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayLocal();
     const fd = new Date(wdays[0].date + 'T00:00:00'), ld = new Date(wdays[6].date + 'T00:00:00');
     subEl.textContent = 'Bu hafta: ' + fd.getDate() + '-' + ld.getDate() + ' ' + UZ_MONTHS[ld.getMonth()];
     totEl.style.display = 'none'; boxEl.style.display = 'block';

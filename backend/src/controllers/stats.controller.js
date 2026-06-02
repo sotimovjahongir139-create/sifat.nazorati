@@ -3,9 +3,9 @@ const db = require('../config/database');
 async function dashboard(req, res, next) {
   try {
     const now   = new Date();
-    const today = now.toISOString().slice(0, 10);
     const year  = now.getFullYear();
     const month = now.getMonth() + 1;
+    const today = `${year}-${String(month).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     const [todayR, monthR, topModelR, topReasonR, trendR] = await Promise.all([
       db.query('SELECT COALESCE(SUM(qty),0) AS total FROM entries WHERE date=$1', [today]),

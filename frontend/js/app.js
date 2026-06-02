@@ -210,7 +210,7 @@ function addCustomColor() {
 // ── DASHBOARD ───────────────────────────────────────────────
 function renderDash() {
   const data = getData(); const now = new Date();
-  const today = now.toISOString().split('T')[0];
+  const today = todayLocal();
 
   document.getElementById('k-today').textContent =
     data.filter(r => r.date === today).reduce((s, r) => s + r.qty, 0);
@@ -318,7 +318,7 @@ async function saveNewReason() {
 
 // ── ENTRY FORM ──────────────────────────────────────────────
 function setupForm() {
-  document.getElementById('eDate').value   = new Date().toISOString().split('T')[0];
+  document.getElementById('eDate').value   = todayLocal();
   document.getElementById('eReason').value = '';
   document.getElementById('eCat').value    = '';
   document.getElementById('eQty').value    = '';
@@ -427,7 +427,7 @@ function renderAnalytics() {
 function renderCatPage(catId) {
   const cat  = CATS.find(c => c.id === catId);
   const data = getData().filter(r => r.cat === catId);
-  const now  = new Date(); const today = now.toISOString().split('T')[0];
+  const now  = new Date(); const today = todayLocal();
 
   const total      = data.reduce((s, r) => s + r.qty, 0);
   const monthTotal = data.filter(r => { const d = new Date(r.date + 'T00:00:00'); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); }).reduce((s, r) => s + r.qty, 0);
@@ -558,7 +558,7 @@ function renderUserRows(users) {
       <td style="color:var(--muted)">${i + 1}</td>
       <td style="font-weight:600">${u.username}</td>
       <td><span style="font-size:11px;padding:3px 8px;border-radius:5px;background:rgba(79,142,247,.1);color:var(--blue)">${roleLabel[u.role] || u.role}</span></td>
-      <td style="color:var(--text2);font-size:12px">${fmtDate(u.created_at?.split('T')[0])}</td>
+      <td style="color:var(--text2);font-size:12px">${fmtDate(u.created_at ? ymdLocal(new Date(u.created_at)) : null)}</td>
       <td>${u.id !== me?.id ? `<button onclick="removeUser(${u.id},'${u.username}')" style="background:none;border:none;color:var(--red);cursor:pointer;opacity:.55;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.55"><i class="fas fa-trash"></i></button>` : '<span style="color:var(--muted);font-size:11px">(siz)</span>'}</td>
     </tr>`).join('');
 }
