@@ -125,6 +125,10 @@ function last6() {
 function monthlyTotal(data, y, m) {
   return data.filter(r => { const d = new Date(r.date + 'T00:00:00'); return d.getFullYear() === y && d.getMonth() === m; }).reduce((s, r) => s + r.qty, 0);
 }
+function currentMonthData(data) {
+  const now = new Date();
+  return data.filter(r => { const d = new Date(r.date + 'T00:00:00'); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); });
+}
 function reasonTotal(data, r) { return data.filter(d => d.reason === r).reduce((s, d) => s + d.qty, 0); }
 
 function top5models(data) {
@@ -409,8 +413,8 @@ function renderTrend(data) {
       </div>`;
 
       const wkTotals = wdays.map(d => data.filter(r => r.date === d.date).reduce((s, r) => s + r.qty, 0));
-      const total = data.reduce((s, r) => s + r.qty, 0);
-      totEl.textContent = 'Jami brak: ' + total; totEl.style.display = 'block';
+      const monthTotal = currentMonthData(data).reduce((s, r) => s + r.qty, 0);
+      totEl.textContent = 'Bu oy: ' + monthTotal; totEl.style.display = 'block';
 
       const datasets = top5.map((k, i) => ({
         label: k,
@@ -419,10 +423,9 @@ function renderTrend(data) {
         borderWidth: 2, pointBackgroundColor: LINE_COLORS[i], pointRadius: 4, fill: false, tension: .4
       }));
       const legendVals = datasets.map(ds => ds.data.reduce((s, v) => s + v, 0));
-      const legendTot  = legendVals.reduce((s, v) => s + v, 0);
       lstEl.style.display = 'block';
       lstEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px 10px;padding:6px 2px 2px">' +
-        top5.map((k, i) => { const v = legendVals[i], pct = legendTot > 0 ? ((v / legendTot) * 100).toFixed(0) : '0';
+        top5.map((k, i) => { const v = legendVals[i], pct = monthTotal > 0 ? ((v / monthTotal) * 100).toFixed(0) : '0';
           return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:${LINE_COLORS[i]};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
         }).join('') + '</div>';
       destroyC('trend');
@@ -452,10 +455,10 @@ function renderTrend(data) {
         <button class="ttab ms-stab" data-m="haftalik" onclick="setMsSubMode('haftalik')">Haftalik</button>
         <button class="ttab ms-stab active" data-m="oylik" onclick="setMsSubMode('oylik')">Oylik</button>
       </div>`;
-      const weeks    = currentMonthWeeks();
-      const wkTotals = weeks.map(w => weeklyTotal(data, w.start, w.end));
-      const total    = data.reduce((s, r) => s + r.qty, 0);
-      totEl.textContent = 'Jami brak: ' + total; totEl.style.display = 'block';
+      const weeks      = currentMonthWeeks();
+      const wkTotals   = weeks.map(w => weeklyTotal(data, w.start, w.end));
+      const monthTotal = currentMonthData(data).reduce((s, r) => s + r.qty, 0);
+      totEl.textContent = 'Bu oy: ' + monthTotal; totEl.style.display = 'block';
       const datasets = top5.map((k, i) => ({
         label: k,
         data: weeks.map(w => data.filter(r => r.date >= w.start && r.date <= w.end && r[field] === k).reduce((s, r) => s + r.qty, 0)),
@@ -463,10 +466,9 @@ function renderTrend(data) {
         borderWidth: 2, pointBackgroundColor: LINE_COLORS[i], pointRadius: 4, fill: false, tension: .4
       }));
       const legendVals = datasets.map(ds => ds.data.reduce((s, v) => s + v, 0));
-      const legendTot  = legendVals.reduce((s, v) => s + v, 0);
       lstEl.style.display = 'block';
       lstEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px 10px;padding:6px 2px 2px">' +
-        top5.map((k, i) => { const v = legendVals[i], pct = legendTot > 0 ? ((v / legendTot) * 100).toFixed(0) : '0';
+        top5.map((k, i) => { const v = legendVals[i], pct = monthTotal > 0 ? ((v / monthTotal) * 100).toFixed(0) : '0';
           return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:${LINE_COLORS[i]};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
         }).join('') + '</div>';
       destroyC('trend');

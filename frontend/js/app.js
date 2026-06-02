@@ -247,8 +247,9 @@ function renderDash() {
       scales: { x: { grid: { color: GRID }, ticks: { color: TC, font: { size: 9 } } }, y: { grid: { display: false }, ticks: { color: TC, font: { size: 9 } } } } }
   });
 
-  // Top 10 ranking
-  renderRankList('skuRank', topNmodels(data, 10),
+  // Top 10 ranking — current month only
+  const mData = data.filter(r => { const d = new Date(r.date + 'T00:00:00'); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); });
+  renderRankList('skuRank', topNmodels(mData, 10),
     ['#ffd43b','#aaa','#ff6b35',...Array(7).fill('#6666aa')],
     ['rgba(255,212,59,.5)','rgba(170,170,170,.35)','rgba(255,107,53,.45)',...Array(7).fill('rgba(100,100,170,.3)')]);
 
@@ -412,11 +413,13 @@ function renderAnalytics() {
   });
 
   const rColors = ['#ff4757','#ffd43b','#ff6b35','#4f8ef7','#2ed573','#9c6af8','#2ec4b6','#ff9f43','#55efc4'];
-  renderRankList('aSkuRank', topNmodels(data, 10),
+  const now2 = new Date();
+  const aMData = data.filter(r => { const d = new Date(r.date + 'T00:00:00'); return d.getFullYear() === now2.getFullYear() && d.getMonth() === now2.getMonth(); });
+  renderRankList('aSkuRank', topNmodels(aMData, 10),
     ['#ffd43b','#aaa','#ff6b35',...Array(7).fill('#6666aa')],
     ['rgba(255,212,59,.5)','rgba(170,170,170,.35)','rgba(255,107,53,.45)',...Array(7).fill('rgba(100,100,170,.3)')]);
   renderRankList('aReasonRank',
-    REASONS.map(r => ({ name: r, total: reasonTotal(data, r) })).sort((a, b) => b.total - a.total),
+    REASONS.map(r => ({ name: r, total: reasonTotal(aMData, r) })).sort((a, b) => b.total - a.total),
     rColors, rColors.map(c => c + '66'));
 }
 
