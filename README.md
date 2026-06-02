@@ -153,3 +153,7 @@ npm run dev
 ---
 
 Arkon © 2025
+
+## Auto-deploy
+
+Pushes to `main` are deployed to the server automatically within ~5 min (poll-based) and reported to Telegram `@johnupdatebot`.
