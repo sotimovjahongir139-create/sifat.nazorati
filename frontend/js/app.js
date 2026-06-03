@@ -427,14 +427,20 @@ function renderAnalytics() {
 
 // ── CATEGORY PAGES ───────────────────────────────────────────
 function renderCatPage(catId) {
-  const cat  = CATS.find(c => c.id === catId);
-  const data = getData().filter(r => r.cat === catId);
+  const cat     = CATS.find(c => c.id === catId);
+  const allData = getData();
+  const data    = allData.filter(r => r.cat === catId);
   const now  = new Date(); const today = todayLocal();
 
   const total      = data.reduce((s, r) => s + r.qty, 0);
   const monthTotal = data.filter(r => { const d = new Date(r.date + 'T00:00:00'); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); }).reduce((s, r) => s + r.qty, 0);
   const todayTotal = data.filter(r => r.date === today).reduce((s, r) => s + r.qty, 0);
   const ac = cat.accentCls;
+
+  const allTimeTotal  = allData.reduce((s, r) => s + r.qty, 0);
+  const allMonthTotal = allData.filter(r => { const d = new Date(r.date + 'T00:00:00'); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); }).reduce((s, r) => s + r.qty, 0);
+  const pctTotal = allTimeTotal  > 0 ? (total      / allTimeTotal  * 100).toFixed(1) : '0.0';
+  const pctMonth = allMonthTotal > 0 ? (monthTotal / allMonthTotal * 100).toFixed(1) : '0.0';
 
   const el = document.getElementById('page-' + catId);
   el.innerHTML = `
@@ -449,9 +455,9 @@ function renderCatPage(catId) {
     </div>
     <div class="kpi-row-3">
       <div class="kpi ${ac}"><div class="kpi-ico"><i class="fas fa-layer-group"></i></div>
-        <div class="kpi-lbl">Jami nuqsonlar</div><div class="kpi-val">${total}</div><div class="kpi-sub">Barcha vaqt davomida</div></div>
+        <div class="kpi-lbl">Jami nuqsonlar</div><div class="kpi-val">${total}</div><div class="kpi-sub">Barcha vaqt davomida</div><div class="kpi-sub">${pctTotal}% — Barcha vaqt davomida jami brakdan</div></div>
       <div class="kpi ${ac}"><div class="kpi-ico"><i class="fas fa-calendar-alt"></i></div>
-        <div class="kpi-lbl">Shu oyda</div><div class="kpi-val">${monthTotal}</div><div class="kpi-sub">Joriy oy natijalari</div></div>
+        <div class="kpi-lbl">Shu oyda</div><div class="kpi-val">${monthTotal}</div><div class="kpi-sub">Joriy oy natijalari</div><div class="kpi-sub">${pctMonth}% — Joriy oy jami brakdan</div></div>
       <div class="kpi ${ac}"><div class="kpi-ico"><i class="fas fa-clock"></i></div>
         <div class="kpi-lbl">Bugun</div><div class="kpi-val">${todayTotal}</div><div class="kpi-sub">Bugungi nuqsonlar</div></div>
     </div>
