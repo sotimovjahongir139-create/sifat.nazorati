@@ -209,10 +209,6 @@ function setTrendMode(m) {
 
 function setSkuFilter(f) {
   _skuFilter = _skuFilter === f ? null : f;
-  ['padosh','stilka'].forEach(k => {
-    const b = document.getElementById('ttab-' + k);
-    if (b) b.classList.toggle('active', _skuFilter && k === _skuFilter.toLowerCase());
-  });
   renderTrend(getData());
 }
 
@@ -418,6 +414,7 @@ function renderTrend(data) {
         <div class="trend-tabs" style="display:inline-flex">
           <button class="ttab ms-stab active" data-m="haftalik" onclick="setMsSubMode('haftalik')">Haftalik</button>
           <button class="ttab ms-stab" data-m="oylik" onclick="setMsSubMode('oylik')">Oylik</button>
+          ${_trendMode === 'model' ? `<button class="ttab${_skuFilter === 'Padosh' ? ' active' : ''}" onclick="setSkuFilter('Padosh')">Padosh</button><button class="ttab${_skuFilter === 'Stilka' ? ' active' : ''}" onclick="setSkuFilter('Stilka')">Stilka</button>` : ''}
         </div>
         <div style="display:flex;gap:6px">
           <button class="ttab" onclick="navWeek(-1)">← Oldingi hafta</button>
@@ -467,6 +464,7 @@ function renderTrend(data) {
       stEl.innerHTML = `<div class="trend-tabs" style="display:inline-flex">
         <button class="ttab ms-stab" data-m="haftalik" onclick="setMsSubMode('haftalik')">Haftalik</button>
         <button class="ttab ms-stab active" data-m="oylik" onclick="setMsSubMode('oylik')">Oylik</button>
+        ${_trendMode === 'model' ? `<button class="ttab${_skuFilter === 'Padosh' ? ' active' : ''}" onclick="setSkuFilter('Padosh')">Padosh</button><button class="ttab${_skuFilter === 'Stilka' ? ' active' : ''}" onclick="setSkuFilter('Stilka')">Stilka</button>` : ''}
       </div>`;
       const weeks      = currentMonthWeeks();
       const wkTotals   = weeks.map(w => weeklyTotal(data, w.start, w.end));
