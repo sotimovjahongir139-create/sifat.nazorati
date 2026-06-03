@@ -180,6 +180,7 @@ const LINE_COLORS = ['#4f8ef7','#2ed573','#ff6b35','#ffd43b','#9c6af8'];
 let _trendMode    = 'tendensiya';
 let _msSubMode    = 'haftalik';
 let _weekNavOffset = 0;
+let _skuFilter    = null;
 
 function getOffsetWeekDays(offset) {
   const now = new Date(), dow = now.getDay();
@@ -202,6 +203,15 @@ function setTrendMode(m) {
   ['tendensiya','haftalik','oylik','model','sabab'].forEach(k => {
     const b = document.getElementById('ttab-' + k);
     if (b) b.classList.toggle('active', k === m);
+  });
+  renderTrend(getData());
+}
+
+function setSkuFilter(f) {
+  _skuFilter = _skuFilter === f ? null : f;
+  ['padosh','stilka'].forEach(k => {
+    const b = document.getElementById('ttab-' + k);
+    if (b) b.classList.toggle('active', _skuFilter && k === _skuFilter.toLowerCase());
   });
   renderTrend(getData());
 }
@@ -389,8 +399,11 @@ function renderTrend(data) {
   } else {
     destroyC('trend'); destroyC('trendM'); destroyC('trendS');
     boxEl.style.display = 'block'; pctEl.style.display = 'none'; pctEl.innerHTML = '';
-    const field = _trendMode === 'model' ? 'sku' : 'reason';
-    const top5  = _top5(data, field);
+    const field      = _trendMode === 'model' ? 'sku' : 'reason';
+    const displayData = (_trendMode === 'model' && _skuFilter)
+      ? data.filter(r => r.sku && r.sku.includes(_skuFilter))
+      : data;
+    const top5  = _top5(displayData, field);
 
     if (_msSubMode === 'haftalik') {
       const wdays = getOffsetWeekDays(_weekNavOffset);
