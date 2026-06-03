@@ -494,21 +494,22 @@ function renderTrend(data) {
 }
 
 // ── SHARED: RANKING LIST ─────────────────────────────────────
-function renderRankList(elId, items, colors, barColors, numStyles = null) {
+function renderRankList(elId, items, colors, barColors, numStyles = null, monthTotal = 0) {
   const el = document.getElementById(elId);
   if (!el) return;
   const max    = items[0]?.total || 1;
   const numCls = ['rn1','rn2','rn3'];
   el.innerHTML = items.map((it, i) => {
-    const ns = numStyles ? numStyles[i] || '' : '';
-    const nc = numStyles ? 'rn-' : (numCls[i] || 'rn-');
+    const ns  = numStyles ? numStyles[i] || '' : '';
+    const nc  = numStyles ? 'rn-' : (numCls[i] || 'rn-');
+    const pct = monthTotal > 0 ? `<span class="rpct">${(it.total / monthTotal * 100).toFixed(1)}%</span>` : '';
     return `<li class="rit">
       <div class="rnum ${nc}" style="${ns}">${i + 1}</div>
       <div class="rinfo">
         <div class="rname" style="color:${colors[i] || '#ccc'}">${it.name}</div>
         <div class="rbar-wrap"><div class="rbar" style="width:${(it.total / max * 100).toFixed(0)}%;background:${barColors[i] || 'rgba(100,100,100,.4)'}"></div></div>
       </div>
-      <div class="rval">${it.total}</div>
+      <div class="rval">${it.total}${pct}</div>
     </li>`;
   }).join('');
 }

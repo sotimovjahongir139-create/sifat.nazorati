@@ -415,12 +415,14 @@ function renderAnalytics() {
   const rColors = ['#ff4757','#ffd43b','#ff6b35','#4f8ef7','#2ed573','#9c6af8','#2ec4b6','#ff9f43','#55efc4'];
   const now2 = new Date();
   const aMData = data.filter(r => { const d = new Date(r.date + 'T00:00:00'); return d.getFullYear() === now2.getFullYear() && d.getMonth() === now2.getMonth(); });
+  const aMTotal = aMData.reduce((s, r) => s + r.qty, 0);
   renderRankList('aSkuRank', topNmodels(aMData, 10),
     ['#ffd43b','#aaa','#ff6b35',...Array(7).fill('#6666aa')],
-    ['rgba(255,212,59,.5)','rgba(170,170,170,.35)','rgba(255,107,53,.45)',...Array(7).fill('rgba(100,100,170,.3)')]);
+    ['rgba(255,212,59,.5)','rgba(170,170,170,.35)','rgba(255,107,53,.45)',...Array(7).fill('rgba(100,100,170,.3)')],
+    null, aMTotal);
   renderRankList('aReasonRank',
     REASONS.map(r => ({ name: r, total: reasonTotal(aMData, r) })).sort((a, b) => b.total - a.total),
-    rColors, rColors.map(c => c + '66'));
+    rColors, rColors.map(c => c + '66'), null, aMTotal);
 }
 
 // ── CATEGORY PAGES ───────────────────────────────────────────
