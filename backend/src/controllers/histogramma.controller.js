@@ -75,7 +75,7 @@ async function deleteByModel(req, res, next) {
 
 async function deleteAll(req, res, next) {
   try {
-    if (req.user.username !== 'admin2') {
+    if (!['admin2', 'admin'].includes(req.user.username)) {
       return res.status(403).json({ error: "Ruxsat yo'q" });
     }
     await db.query('DELETE FROM quality_records');

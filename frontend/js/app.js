@@ -817,7 +817,7 @@ function setHistMode(material, mode) {
 }
 
 async function renderHistogramma() {
-  if (!localStorage.getItem('histogram_data_cleared_v2') && _isHistAdmin2()) {
+  if (!localStorage.getItem('histogram_data_cleared_v2') && (_isHistAdmin2() || _isHistAdmin())) {
     localStorage.setItem('histogram_data_cleared_v2', '1');
     Object.keys(localStorage)
       .filter(k => k.startsWith('hist_models_') || k.startsWith('hist_grams_'))
