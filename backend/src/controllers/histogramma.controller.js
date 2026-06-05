@@ -56,6 +56,23 @@ async function create(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function deleteByModel(req, res, next) {
+  try {
+    if (req.user.username !== 'admin2') {
+      return res.status(403).json({ error: "Ruxsat yo'q" });
+    }
+    const { material_type, model } = req.query;
+    if (!material_type || !model) {
+      return res.status(400).json({ error: "material_type va model kerak" });
+    }
+    await db.query(
+      'DELETE FROM quality_records WHERE material_type = $1 AND model = $2',
+      [material_type, model.trim()]
+    );
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+}
+
 async function deleteAll(req, res, next) {
   try {
     if (req.user.username !== 'admin2') {
@@ -66,4 +83,4 @@ async function deleteAll(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, create, deleteAll };
+module.exports = { list, create, deleteByModel, deleteAll };

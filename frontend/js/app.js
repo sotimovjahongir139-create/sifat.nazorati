@@ -895,6 +895,49 @@ function _renderHistCharts() {
     };
   }
 
+  function makeDeletePlugin(entryList, material) {
+    const zones = [];
+    return {
+      id: 'histDel_' + material,
+      afterDatasetsDraw(chart) {
+        if (!_isHistAdmin2()) return;
+        zones.length = 0;
+        const ctx = chart.ctx;
+        chart.getDatasetMeta(0).data.forEach((bar, j) => {
+          const e = entryList[j];
+          if (!e || !e.qty) return;
+          const barH = bar.base - bar.y;
+          if (barH < 20) return;
+          const bw = 14, bh = 14;
+          const bx = bar.x - bw / 2;
+          const by = bar.y + 3;
+          zones.push({ x: bx, y: by, w: bw, h: bh, model: e.model });
+          ctx.save();
+          ctx.fillStyle = 'rgba(255,71,87,.85)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 3);
+          else { ctx.rect(bx, by, bw, bh); }
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,.95)';
+          ctx.font = 'bold 9px Segoe UI,sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('✕', bx + bw / 2, by + bh / 2);
+          ctx.restore();
+        });
+      },
+      afterEvent(chart, args) {
+        if (!_isHistAdmin2() || args.event.type !== 'click') return;
+        const { x, y } = args.event;
+        for (const z of zones) {
+          if (x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h) {
+            deleteHistModel(material, z.model);
+            break;
+          }
+        }
+      }
+    };
+  }
+
   function buildChart(material, canvasId, barColor, borderColor) {
     const mode     = material === 'PU' ? _histPUMode : _histTEPMode;
     const filtered = filterByMode(material, mode);
@@ -924,13 +967,6 @@ function _renderHistCharts() {
           plugins: [makeBarLabelPlugin(dayEntr)]
         });
       }
-      if (listEl) {
-        listEl.innerHTML = hasData
-          ? wkDays.map((d, i) => dayQtys[i] > 0
-              ? `<li class="hist-stat-li"><span class="hist-stat-name">${d.label}</span><span class="hist-stat-cnt">${dayQtys[i]}</span></li>`
-              : '').join('')
-          : `<li class="hist-stat-empty">Ma'lumot yo'q</li>`;
-      }
       return;
     }
 
@@ -959,21 +995,28 @@ function _renderHistCharts() {
             y: { grid: { color: GRID }, ticks: { color: TC, font: { size: 10 }, precision: 0 }, beginAtZero: true }
           }
         },
-        plugins: [makeBarLabelPlugin(entries)]
+        plugins: _isHistAdmin2()
+          ? [makeBarLabelPlugin(entries), makeDeletePlugin(entries, material)]
+          : [makeBarLabelPlugin(entries)]
       });
-    }
-    if (listEl) {
-      listEl.innerHTML = entries.length
-        ? entries.map(e => {
-            const gramStr = e.gram ? ` (${e.gram} gr)` : '';
-            return `<li class="hist-stat-li"><span class="hist-stat-name">${e.model}</span><span class="hist-stat-cnt">${e.qty}${gramStr}</span></li>`;
-          }).join('')
-        : `<li class="hist-stat-empty">Ma'lumot yo'q</li>`;
     }
   }
 
   buildChart('PU',  'cHistPU',  'rgba(79,142,247,.75)', '#4f8ef7');
   buildChart('TEP', 'cHistTEP', 'rgba(46,213,115,.75)', '#2ed573');
+}
+
+async function deleteHistModel(material, model) {
+  if (!_isHistAdmin2()) return;
+  if (!confirm(`"${model}" modelining barcha ma'lumotlarini o'chirish?`)) return;
+  try {
+    await apiDeleteHistogrammaModel(material, model);
+    _histData = _histData.filter(r => !(r.material_type === material && r.model === model));
+    _renderHistCharts();
+    toast("O'chirildi!", 's');
+  } catch (err) {
+    toast(err.message || "O'chirishda xatolik", 'e');
+  }
 }
 
 // ── HELPERS ──────────────────────────────────────────────────

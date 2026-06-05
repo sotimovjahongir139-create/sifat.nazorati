@@ -102,6 +102,11 @@ async function apiDeleteHistogramma() {
   return apiFetch('/histogramma', { method: 'DELETE' });
 }
 
+async function apiDeleteHistogrammaModel(material_type, model) {
+  const q = new URLSearchParams({ material_type, model }).toString();
+  return apiFetch('/histogramma/model?' + q, { method: 'DELETE' });
+}
+
 // ── USERS (admin only) ──────────────────────────────────────
 async function apiGetUsers() {
   return apiFetch('/users');
