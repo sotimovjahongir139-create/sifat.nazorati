@@ -297,7 +297,7 @@
             <label class="flbl">Model</label>
             <input type="text" class="fi" id="hModel" placeholder="Model nomini kiriting..." oninput="onHistModelInput()" autocomplete="off">
             <div class="hist-model-list" id="hModelListBox"></div>
-            <button type="button" class="reason-add-btn" onclick="addHistCustomModel()" style="margin-top:8px"><i class="fas fa-plus"></i> Yangi model qo'shish</button>
+            <button type="button" class="reason-add-btn" id="hModelAddBtn" onclick="addHistCustomModel()" style="margin-top:8px"><i class="fas fa-plus"></i> Yangi model qo'shish</button>
           </div>
           <div id="hMiqdorWrap" style="display:none">
             <label class="flbl">Miqdor</label>
@@ -309,16 +309,21 @@
           </div>
         </div>
         <div class="fact">
-          <button class="btn-save" onclick="saveHistogramma()"><i class="fas fa-save"></i> Saqlash</button>
+          <button class="btn-save" id="histSaveBtn" onclick="saveHistogramma()"><i class="fas fa-save"></i> Saqlash</button>
         </div>
       </div>
       <div class="g22">
         <div class="ccard">
           <div class="ch">
             <div><div class="ch-t">PU bo'yicha tahlil</div><div class="ch-s">Model bo'yicha taqsimot</div></div>
-            <div class="trend-tabs">
-              <button class="ttab active" id="histPUTab-oylik"    onclick="setHistMode('PU','oylik')">Oylik</button>
-              <button class="ttab"        id="histPUTab-haftalik" onclick="setHistMode('PU','haftalik')">Haftalik</button>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <select class="hist-filter-sel" id="histModelSel-PU" onchange="setHistModelFilter('PU',this.value)">
+                <option value="">Barcha modellar</option>
+              </select>
+              <div class="trend-tabs">
+                <button class="ttab active" id="histPUTab-oylik"    onclick="setHistMode('PU','oylik')">Oylik</button>
+                <button class="ttab"        id="histPUTab-haftalik" onclick="setHistMode('PU','haftalik')">Haftalik</button>
+              </div>
             </div>
           </div>
           <div class="cbox tall"><canvas id="cHistPU"></canvas></div>
@@ -327,9 +332,14 @@
         <div class="ccard">
           <div class="ch">
             <div><div class="ch-t">TEP bo'yicha tahlil</div><div class="ch-s">Model bo'yicha taqsimot</div></div>
-            <div class="trend-tabs">
-              <button class="ttab active" id="histTEPTab-oylik"    onclick="setHistMode('TEP','oylik')">Oylik</button>
-              <button class="ttab"        id="histTEPTab-haftalik" onclick="setHistMode('TEP','haftalik')">Haftalik</button>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <select class="hist-filter-sel" id="histModelSel-TEP" onchange="setHistModelFilter('TEP',this.value)">
+                <option value="">Barcha modellar</option>
+              </select>
+              <div class="trend-tabs">
+                <button class="ttab active" id="histTEPTab-oylik"    onclick="setHistMode('TEP','oylik')">Oylik</button>
+                <button class="ttab"        id="histTEPTab-haftalik" onclick="setHistMode('TEP','haftalik')">Haftalik</button>
+              </div>
             </div>
           </div>
           <div class="cbox tall"><canvas id="cHistTEP"></canvas></div>

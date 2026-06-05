@@ -604,6 +604,39 @@ let _histData    = [];
 let _histMat     = null;
 let _histPUMode  = 'oylik';
 let _histTEPMode = 'oylik';
+let _histPUModel  = '';
+let _histTEPModel = '';
+
+function _isHistAdmin() { return getCurrentUser()?.username === 'admin2'; }
+
+function _applyHistRoles() {
+  const can = _isHistAdmin();
+  const miqdorWrap = document.getElementById('hMiqdorWrap');
+  const gramWrap   = document.getElementById('hGramWrap');
+  const addBtn     = document.getElementById('hModelAddBtn');
+  const saveBtn    = document.getElementById('histSaveBtn');
+  if (miqdorWrap) miqdorWrap.style.display = (can && _histMat) ? 'block' : 'none';
+  if (gramWrap)   gramWrap.style.display   = (can && _histMat) ? 'block' : 'none';
+  if (addBtn)     addBtn.style.display     = can ? '' : 'none';
+  if (saveBtn)    saveBtn.style.display    = can ? 'flex' : 'none';
+}
+
+function setHistModelFilter(material, model) {
+  if (material === 'PU') _histPUModel = model;
+  else _histTEPModel = model;
+  _renderHistCharts();
+}
+
+function _refreshHistModelSelects() {
+  ['PU', 'TEP'].forEach(mat => {
+    const sel = document.getElementById('histModelSel-' + mat);
+    if (!sel) return;
+    const cur    = mat === 'PU' ? _histPUModel : _histTEPModel;
+    const models = _getAllHistModels(mat);
+    sel.innerHTML = '<option value="">Barcha modellar</option>' +
+      models.map(m => `<option value="${m}"${m === cur ? ' selected' : ''}>${m}</option>`).join('');
+  });
+}
 
 function _getHistCustomModels(mat) {
   try { return JSON.parse(localStorage.getItem('hist_models_' + mat) || '[]'); } catch { return []; }
@@ -646,6 +679,7 @@ function setupHistogramma() {
   document.getElementById('histSuccMsg').style.display = 'none';
   document.querySelectorAll('.hist-mat-btn').forEach(b => b.classList.remove('active'));
   _histMat = null;
+  _applyHistRoles();
 }
 
 function selectHistMat(mat) {
@@ -656,10 +690,9 @@ function selectHistMat(mat) {
   document.getElementById('hModel').value  = '';
   document.getElementById('hMiqdor').value = '';
   document.getElementById('hGram').value   = '';
-  document.getElementById('hModelWrap').style.display  = 'block';
-  document.getElementById('hMiqdorWrap').style.display = 'block';
-  document.getElementById('hGramWrap').style.display   = 'block';
+  document.getElementById('hModelWrap').style.display = 'block';
   renderHistModelList('');
+  _applyHistRoles();
 }
 
 function onHistModelInput() {
@@ -720,6 +753,7 @@ async function renderHistogramma() {
   } catch {
     _histData = _histData || [];
   }
+  _refreshHistModelSelects();
   _renderHistCharts();
 }
 
@@ -728,7 +762,8 @@ function _renderHistCharts() {
   const now  = new Date();
 
   function filterByMode(mat, mode) {
-    const matData = data.filter(r => r.material_type === mat);
+    const modelFilter = mat === 'PU' ? _histPUModel : _histTEPModel;
+    let matData = data.filter(r => r.material_type === mat && (!modelFilter || r.model === modelFilter));
     if (mode === 'haftalik') {
       const dow = now.getDay();
       const mon = new Date(now);
