@@ -17,7 +17,7 @@ async function list(req, res, next) {
     const sql = `
       SELECT q.id,
              TO_CHAR(q.date,'YYYY-MM-DD') AS date,
-             q.material_type, q.model, q.gram,
+             q.material_type, q.model, q.gram, q.qty,
              q.created_at,
              u.username AS created_by_name
       FROM quality_records q
@@ -34,19 +34,23 @@ async function list(req, res, next) {
 
 async function create(req, res, next) {
   try {
-    const { date, material_type, model, gram } = req.body;
-    if (!date || !material_type || !model || !gram) {
+    const { date, material_type, model, gram, qty } = req.body;
+    if (!date || !material_type || !model || !gram || !qty) {
       return res.status(400).json({ error: "Barcha majburiy maydonlarni to'ldiring" });
     }
     if (!VALID_MATERIALS.includes(material_type)) {
       return res.status(400).json({ error: "Noto'g'ri material turi" });
     }
+    const qtyInt = parseInt(qty);
+    if (isNaN(qtyInt) || qtyInt < 1) {
+      return res.status(400).json({ error: "Miqdor 1 dan katta bo'lishi kerak" });
+    }
 
     const { rows } = await db.query(
-      `INSERT INTO quality_records (date, material_type, model, gram, created_by)
-       VALUES ($1,$2,$3,$4,$5)
-       RETURNING id, TO_CHAR(date,'YYYY-MM-DD') AS date, material_type, model, gram, created_at`,
-      [date, material_type, model.trim(), gram.trim(), req.user.id]
+      `INSERT INTO quality_records (date, material_type, model, gram, qty, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       RETURNING id, TO_CHAR(date,'YYYY-MM-DD') AS date, material_type, model, gram, qty, created_at`,
+      [date, material_type, model.trim(), String(gram).trim(), qtyInt, req.user.id]
     );
     res.status(201).json(rows[0]);
   } catch (err) { next(err); }

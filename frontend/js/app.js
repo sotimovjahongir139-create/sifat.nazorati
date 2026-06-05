@@ -615,13 +615,34 @@ function _saveHistCustomModel(mat, name) {
     localStorage.setItem('hist_models_' + mat, JSON.stringify(list));
   }
 }
+function _getAllHistModels(mat) {
+  return [...new Set([...(HIST_MODELS[mat] || []), ..._getHistCustomModels(mat)])];
+}
+
+function renderHistModelList(q) {
+  const all      = _getAllHistModels(_histMat || 'PU');
+  const filtered = q ? all.filter(m => m.toLowerCase().includes(q.toLowerCase())) : all;
+  const sel      = document.getElementById('hModel').value.trim();
+  const box      = document.getElementById('hModelListBox');
+  if (!box) return;
+  box.innerHTML = filtered.map(m =>
+    `<div class="hist-model-item${m === sel ? ' selected' : ''}" onclick="selectHistModelFromList('${m.replace(/'/g, "\\'")}')">${m}</div>`
+  ).join('') || '<div style="padding:10px 13px;color:var(--muted);font-size:13px">Topilmadi</div>';
+}
+
+function selectHistModelFromList(model) {
+  document.getElementById('hModel').value = model;
+  renderHistModelList(document.getElementById('hModel').value.trim());
+}
 
 function setupHistogramma() {
   document.getElementById('hDate').value = todayLocal();
-  document.getElementById('hModelWrap').style.display = 'none';
-  document.getElementById('hGramWrap').style.display  = 'none';
-  document.getElementById('hModel').value = '';
-  document.getElementById('hGram').value  = '';
+  document.getElementById('hModelWrap').style.display  = 'none';
+  document.getElementById('hMiqdorWrap').style.display = 'none';
+  document.getElementById('hGramWrap').style.display   = 'none';
+  document.getElementById('hModel').value  = '';
+  document.getElementById('hMiqdor').value = '';
+  document.getElementById('hGram').value   = '';
   document.getElementById('histSuccMsg').style.display = 'none';
   document.querySelectorAll('.hist-mat-btn').forEach(b => b.classList.remove('active'));
   _histMat = null;
@@ -632,32 +653,24 @@ function selectHistMat(mat) {
   document.querySelectorAll('.hist-mat-btn').forEach(b =>
     b.classList.toggle('active', b.id === 'hMatBtn-' + mat)
   );
-  const all = [...new Set([...(HIST_MODELS[mat] || []), ..._getHistCustomModels(mat)])];
-  document.getElementById('hModelList').innerHTML = all.map(m => `<option value="${m}">`).join('');
-  document.getElementById('hModel').value = '';
-  document.getElementById('hModelWrap').style.display = 'block';
-  document.getElementById('hGramWrap').style.display  = 'none';
-  document.getElementById('hGram').value = '';
+  document.getElementById('hModel').value  = '';
+  document.getElementById('hMiqdor').value = '';
+  document.getElementById('hGram').value   = '';
+  document.getElementById('hModelWrap').style.display  = 'block';
+  document.getElementById('hMiqdorWrap').style.display = 'block';
+  document.getElementById('hGramWrap').style.display   = 'block';
+  renderHistModelList('');
 }
 
 function onHistModelInput() {
-  const val = document.getElementById('hModel').value.trim();
-  if (val) {
-    const gramSel = document.getElementById('hGram');
-    gramSel.innerHTML = '<option value="">Grammni tanlang...</option>' +
-      HIST_GRAMS.map(g => `<option value="${g}">${g} g</option>`).join('');
-    document.getElementById('hGramWrap').style.display = 'block';
-  } else {
-    document.getElementById('hGramWrap').style.display = 'none';
-  }
+  renderHistModelList(document.getElementById('hModel').value.trim());
 }
 
 function addHistCustomModel() {
   const val = document.getElementById('hModel').value.trim();
   if (!val || !_histMat) { toast("Model nomini kiriting.", 'e'); return; }
   _saveHistCustomModel(_histMat, val);
-  const all = [...new Set([...(HIST_MODELS[_histMat] || []), ..._getHistCustomModels(_histMat)])];
-  document.getElementById('hModelList').innerHTML = all.map(m => `<option value="${m}">`).join('');
+  renderHistModelList(val);
   toast("Model qo'shildi!", 's');
 }
 
@@ -665,15 +678,16 @@ async function saveHistogramma() {
   const date          = document.getElementById('hDate').value;
   const material_type = _histMat;
   const model         = document.getElementById('hModel').value.trim();
-  const gram          = document.getElementById('hGram').value;
+  const qty           = parseInt(document.getElementById('hMiqdor').value);
+  const gram          = document.getElementById('hGram').value.trim();
 
-  if (!date || !material_type || !model || !gram) {
+  if (!date || !material_type || !model || !qty || qty < 1 || !gram) {
     toast("Barcha maydonlarni to'ldiring.", 'e');
     return;
   }
 
   try {
-    await apiPostHistogramma({ date, material_type, model, gram });
+    await apiPostHistogramma({ date, material_type, model, qty, gram });
     _saveHistCustomModel(material_type, model);
     const succEl = document.getElementById('histSuccMsg');
     succEl.style.display = 'flex';
@@ -681,9 +695,10 @@ async function saveHistogramma() {
     setTimeout(() => { succEl.style.display = 'none'; }, 2000);
     _histData = await apiGetHistogramma() || [];
     _renderHistCharts();
-    document.getElementById('hModel').value = '';
-    document.getElementById('hGram').value  = '';
-    document.getElementById('hGramWrap').style.display = 'none';
+    document.getElementById('hModel').value  = '';
+    document.getElementById('hMiqdor').value = '';
+    document.getElementById('hGram').value   = '';
+    renderHistModelList('');
   } catch (err) {
     toast(err.message || 'Saqlashda xatolik', 'e');
   }
@@ -729,31 +744,50 @@ function _renderHistCharts() {
     });
   }
 
-  const barLabelPlugin = {
-    id: 'histBarLabel',
-    afterDatasetsDraw(chart) {
-      const ctx = chart.ctx;
-      chart.data.datasets.forEach((ds, i) => {
-        chart.getDatasetMeta(i).data.forEach((bar, j) => {
-          const v = ds.data[j]; if (!v) return;
-          ctx.save();
-          ctx.fillStyle = 'rgba(228,228,248,.9)';
-          ctx.font = 'bold 11px Segoe UI,sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'bottom';
-          ctx.fillText(v, bar.x, bar.y - 3);
-          ctx.restore();
-        });
-      });
-    }
-  };
+  function aggregateByModel(filtered) {
+    const map = {};
+    filtered.forEach(r => {
+      const key = r.model;
+      if (!map[key]) map[key] = { qty: 0, grams: {} };
+      map[key].qty += (parseInt(r.qty) || 1);
+      const g = String(r.gram || '');
+      map[key].grams[g] = (map[key].grams[g] || 0) + 1;
+    });
+    return Object.entries(map)
+      .map(([model, d]) => ({
+        model,
+        qty: d.qty,
+        gram: Object.entries(d.grams).sort((a, b) => b[1] - a[1])[0]?.[0] || ''
+      }))
+      .sort((a, b) => b.qty - a.qty);
+  }
 
-  function buildChart(material, canvasId, barColor, borderColor, withLabels) {
+  function makeBarLabelPlugin(entries) {
+    return {
+      id: 'histBarLabel',
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        chart.data.datasets.forEach((ds, i) => {
+          chart.getDatasetMeta(i).data.forEach((bar, j) => {
+            const e = entries[j]; if (!e || !e.qty) return;
+            const lbl = e.gram ? `${e.qty} (${e.gram} gr)` : String(e.qty);
+            ctx.save();
+            ctx.fillStyle = 'rgba(228,228,248,.9)';
+            ctx.font = 'bold 10px Segoe UI,sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(lbl, bar.x, bar.y - 3);
+            ctx.restore();
+          });
+        });
+      }
+    };
+  }
+
+  function buildChart(material, canvasId, barColor, borderColor) {
     const mode     = material === 'PU' ? _histPUMode : _histTEPMode;
     const filtered = filterByMode(material, mode);
-    const counts   = {};
-    filtered.forEach(r => { counts[r.model] = (counts[r.model] || 0) + 1; });
-    const entries  = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const entries  = aggregateByModel(filtered);
 
     destroyC('hist' + material);
     const canvas = document.getElementById(canvasId);
@@ -761,9 +795,9 @@ function _renderHistCharts() {
       charts['hist' + material] = new Chart(canvas.getContext('2d'), {
         type: 'bar',
         data: {
-          labels: entries.map(e => e[0]),
+          labels: entries.map(e => e.model),
           datasets: [{
-            data: entries.map(e => e[1]),
+            data: entries.map(e => e.qty),
             backgroundColor: barColor,
             borderColor: borderColor,
             borderWidth: 1,
@@ -774,29 +808,30 @@ function _renderHistCharts() {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          layout: withLabels ? { padding: { top: 20 } } : {},
+          layout: { padding: { top: 22 } },
           plugins: { legend: { display: false } },
           scales: {
             x: { grid: { color: GRID }, ticks: { color: TC, font: { size: 9 }, maxRotation: 35 } },
             y: { grid: { color: GRID }, ticks: { color: TC, font: { size: 10 }, precision: 0 }, beginAtZero: true }
           }
         },
-        plugins: withLabels ? [barLabelPlugin] : []
+        plugins: [makeBarLabelPlugin(entries)]
       });
     }
 
     const listEl = document.getElementById(material === 'PU' ? 'histListPU' : 'histListTEP');
     if (listEl) {
       listEl.innerHTML = entries.length
-        ? entries.map(([model, count]) =>
-            `<li class="hist-stat-li"><span class="hist-stat-name">${model}</span><span class="hist-stat-cnt">${count}</span></li>`
-          ).join('')
+        ? entries.map(e => {
+            const gramStr = e.gram ? ` (${e.gram} gr)` : '';
+            return `<li class="hist-stat-li"><span class="hist-stat-name">${e.model}</span><span class="hist-stat-cnt">${e.qty}${gramStr}</span></li>`;
+          }).join('')
         : `<li class="hist-stat-empty">Ma'lumot yo'q</li>`;
     }
   }
 
-  buildChart('PU',  'cHistPU',  'rgba(79,142,247,.75)', '#4f8ef7', true);
-  buildChart('TEP', 'cHistTEP', 'rgba(46,213,115,.75)', '#2ed573', false);
+  buildChart('PU',  'cHistPU',  'rgba(79,142,247,.75)', '#4f8ef7');
+  buildChart('TEP', 'cHistTEP', 'rgba(46,213,115,.75)', '#2ed573');
 }
 
 // ── HELPERS ──────────────────────────────────────────────────
