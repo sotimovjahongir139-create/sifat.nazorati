@@ -49,6 +49,7 @@
       <div class="nav-it active" onclick="goPage('dash')"><i class="fas fa-chart-line"></i><span>Bosh sahifa</span></div>
       <div class="nav-it" onclick="goPage('entry')"><i class="fas fa-plus-circle"></i><span>Brak kiritish</span></div>
       <div class="nav-it" onclick="goPage('records')"><i class="fas fa-table"></i><span>Barcha yozuvlar</span></div>
+      <div class="nav-it" onclick="goPage('histogramma')"><i class="fas fa-chart-column"></i><span>Histogramma</span></div>
       <div class="nav-lbl" style="margin-top:8px">Tahlil</div>
       <div class="nav-it" onclick="goPage('analytics')"><i class="fas fa-chart-bar"></i><span>Tahlil</span></div>
       <div class="nav-sep"></div>
@@ -275,6 +276,53 @@
 
     <!-- USERS PAGE (admin only) -->
     <div class="page" id="page-users"></div>
+
+    <!-- HISTOGRAMMA PAGE -->
+    <div class="page" id="page-histogramma">
+      <div class="fcard" style="margin-bottom:22px">
+        <div class="succ-msg" id="histSuccMsg" style="display:none"><i class="fas fa-check-circle"></i>&nbsp; Muvaffaqiyatli saqlandi!</div>
+        <div class="fgrid">
+          <div>
+            <label class="flbl">Sana</label>
+            <input type="date" class="fi" id="hDate">
+          </div>
+          <div>
+            <label class="flbl">Material turi</label>
+            <div class="hist-mat-row">
+              <button type="button" class="hist-mat-btn" id="hMatBtn-PU" onclick="selectHistMat('PU')">PU</button>
+              <button type="button" class="hist-mat-btn" id="hMatBtn-TEP" onclick="selectHistMat('TEP')">TEP</button>
+            </div>
+          </div>
+          <div id="hModelWrap" style="display:none">
+            <label class="flbl">Model</label>
+            <select class="fi" id="hModel" onchange="onHistModelChange()">
+              <option value="">Modelni tanlang...</option>
+            </select>
+          </div>
+          <div id="hGramWrap" style="display:none">
+            <label class="flbl">Gramm</label>
+            <select class="fi" id="hGram">
+              <option value="">Grammni tanlang...</option>
+            </select>
+          </div>
+        </div>
+        <div class="fact">
+          <button class="btn-save" onclick="saveHistogramma()"><i class="fas fa-save"></i> Saqlash</button>
+        </div>
+      </div>
+      <div class="g22">
+        <div class="ccard">
+          <div class="ch"><div><div class="ch-t">PU bo'yicha tahlil</div><div class="ch-s">Model bo'yicha taqsimot</div></div></div>
+          <div class="cbox tall"><canvas id="cHistPU"></canvas></div>
+          <ul class="hist-stat-list" id="histListPU"></ul>
+        </div>
+        <div class="ccard">
+          <div class="ch"><div><div class="ch-t">TEP bo'yicha tahlil</div><div class="ch-s">Model bo'yicha taqsimot</div></div></div>
+          <div class="cbox tall"><canvas id="cHistTEP"></canvas></div>
+          <ul class="hist-stat-list" id="histListTEP"></ul>
+        </div>
+      </div>
+    </div>
 
   </div><!-- /main -->
 </div><!-- /app -->

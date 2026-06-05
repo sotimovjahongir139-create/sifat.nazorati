@@ -88,6 +88,16 @@ async function apiPostReason(name) {
   return apiFetch('/reasons', { method: 'POST', body: { name } });
 }
 
+// ── HISTOGRAMMA ─────────────────────────────────────────────
+async function apiGetHistogramma(params = {}) {
+  const q = new URLSearchParams(params).toString();
+  return apiFetch('/histogramma' + (q ? '?' + q : ''));
+}
+
+async function apiPostHistogramma(record) {
+  return apiFetch('/histogramma', { method: 'POST', body: record });
+}
+
 // ── USERS (admin only) ──────────────────────────────────────
 async function apiGetUsers() {
   return apiFetch('/users');

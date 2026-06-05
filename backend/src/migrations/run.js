@@ -44,9 +44,23 @@ async function runMigrations() {
     )
   `);
 
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS quality_records (
+      id            SERIAL PRIMARY KEY,
+      date          DATE         NOT NULL,
+      material_type VARCHAR(10)  NOT NULL CHECK (material_type IN ('PU','TEP')),
+      model         VARCHAR(200) NOT NULL,
+      gram          VARCHAR(50)  NOT NULL,
+      created_by    INTEGER      REFERENCES users(id) ON DELETE SET NULL,
+      created_at    TIMESTAMPTZ  DEFAULT NOW()
+    )
+  `);
+
   await db.query(`CREATE INDEX IF NOT EXISTS idx_entries_date       ON entries(date)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_entries_category   ON entries(category)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_entries_created_by ON entries(created_by)`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_qr_material        ON quality_records(material_type)`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_qr_date            ON quality_records(date)`);
 
   for (const u of SEED_USERS) {
     const { rows } = await db.query('SELECT id FROM users WHERE username = $1', [u.username]);

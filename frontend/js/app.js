@@ -62,6 +62,10 @@ async function goPage(name) {
   if (name === 'users') {
     renderUsers();
   }
+  if (name === 'histogramma') {
+    setupHistogramma();
+    renderHistogramma();
+  }
 }
 
 // ── MODEL PICKER ─────────────────────────────────────────────
@@ -593,6 +597,134 @@ async function removeUser(id, username) {
     toast("Foydalanuvchi o'chirildi.", 's');
     renderUsers();
   } catch (err) { toast(err.message || "O'chirishda xatolik", 'e'); }
+}
+
+// ── HISTOGRAMMA MODULE ───────────────────────────────────────
+let _histData = [];
+let _histMat  = null;
+
+function setupHistogramma() {
+  document.getElementById('hDate').value = todayLocal();
+  document.getElementById('hModelWrap').style.display = 'none';
+  document.getElementById('hGramWrap').style.display  = 'none';
+  document.getElementById('hModel').value = '';
+  document.getElementById('hGram').value  = '';
+  document.getElementById('histSuccMsg').style.display = 'none';
+  document.querySelectorAll('.hist-mat-btn').forEach(b => b.classList.remove('active'));
+  _histMat = null;
+}
+
+function selectHistMat(mat) {
+  _histMat = mat;
+  document.querySelectorAll('.hist-mat-btn').forEach(b =>
+    b.classList.toggle('active', b.id === 'hMatBtn-' + mat)
+  );
+  const modelSel = document.getElementById('hModel');
+  const models   = HIST_MODELS[mat] || [];
+  modelSel.innerHTML = '<option value="">Modelni tanlang...</option>' +
+    models.map(m => `<option value="${m}">${m}</option>`).join('');
+  document.getElementById('hModelWrap').style.display = 'block';
+  document.getElementById('hGramWrap').style.display  = 'none';
+  document.getElementById('hGram').value = '';
+}
+
+function onHistModelChange() {
+  const model = document.getElementById('hModel').value;
+  if (model) {
+    const gramSel = document.getElementById('hGram');
+    gramSel.innerHTML = '<option value="">Grammni tanlang...</option>' +
+      HIST_GRAMS.map(g => `<option value="${g}">${g} g</option>`).join('');
+    document.getElementById('hGramWrap').style.display = 'block';
+  } else {
+    document.getElementById('hGramWrap').style.display = 'none';
+  }
+}
+
+async function saveHistogramma() {
+  const date          = document.getElementById('hDate').value;
+  const material_type = _histMat;
+  const model         = document.getElementById('hModel').value;
+  const gram          = document.getElementById('hGram').value;
+
+  if (!date || !material_type || !model || !gram) {
+    toast("Barcha maydonlarni to'ldiring.", 'e');
+    return;
+  }
+
+  try {
+    await apiPostHistogramma({ date, material_type, model, gram });
+    const succEl = document.getElementById('histSuccMsg');
+    succEl.style.display = 'flex';
+    toast('Saqlandi!', 's');
+    setTimeout(() => { succEl.style.display = 'none'; }, 2000);
+    _histData = await apiGetHistogramma() || [];
+    _renderHistCharts();
+    document.getElementById('hModel').value = '';
+    document.getElementById('hGram').value  = '';
+    document.getElementById('hGramWrap').style.display = 'none';
+  } catch (err) {
+    toast(err.message || 'Saqlashda xatolik', 'e');
+  }
+}
+
+async function renderHistogramma() {
+  try {
+    _histData = await apiGetHistogramma() || [];
+  } catch {
+    _histData = _histData || [];
+  }
+  _renderHistCharts();
+}
+
+function _renderHistCharts() {
+  const data = _histData;
+
+  function buildChart(material, canvasId, barColor, borderColor) {
+    const mat = data.filter(r => r.material_type === material);
+    const counts = {};
+    mat.forEach(r => { counts[r.model] = (counts[r.model] || 0) + 1; });
+    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+    destroyC('hist' + material);
+    const canvas = document.getElementById(canvasId);
+    if (entries.length && canvas) {
+      charts['hist' + material] = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: entries.map(e => e[0]),
+          datasets: [{
+            data: entries.map(e => e[1]),
+            backgroundColor: barColor,
+            borderColor: borderColor,
+            borderWidth: 1,
+            borderRadius: 6,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: GRID }, ticks: { color: TC, font: { size: 9 }, maxRotation: 35 } },
+            y: { grid: { color: GRID }, ticks: { color: TC, font: { size: 10 }, precision: 0 }, beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    const listEl = document.getElementById(material === 'PU' ? 'histListPU' : 'histListTEP');
+    if (listEl) {
+      listEl.innerHTML = entries.length
+        ? entries.map(([model, count]) =>
+            `<li class="hist-stat-li"><span class="hist-stat-name">${model}</span><span class="hist-stat-cnt">${count}</span></li>`
+          ).join('')
+        : `<li class="hist-stat-empty">Ma'lumot yo'q</li>`;
+    }
+  }
+
+  buildChart('PU',  'cHistPU',  'rgba(79,142,247,.75)',  '#4f8ef7');
+  buildChart('TEP', 'cHistTEP', 'rgba(46,213,115,.75)',  '#2ed573');
 }
 
 // ── HELPERS ──────────────────────────────────────────────────

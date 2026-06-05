@@ -61,12 +61,29 @@ const UZ_MONTHS = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','
 const GRID = 'rgba(255,255,255,.05)';
 const TC   = 'rgba(255,255,255,.6)';
 
+const HIST_MODELS = {
+  PU: [
+    'PU0750','PU 23338 Velikan','PU 50738 Behzod','PU Gucci','PU20410',
+    '9092','2104','2283','3316','2099','1207','Tomford',
+    '1603-siliq','1603-yozuvli','Brunelli cucunelli','Hermes Lazerli',
+    '23338','Heval','21128','2712'
+  ],
+  TEP: [
+    '2019 Tep','TEP 301 Loro piana','695 tep','7206 Tep','Boss Tep','1229 TEP',
+    'Baldini','Loro piano 1733','Napoli','Arizona','348','Loro F',
+    'Loro piana 031','Loro piana 2733','589','9910'
+  ]
+};
+
+const HIST_GRAMS = ['200','250','300','350','400','450','500','550','600','650','700'];
+
 const PAGE_META = {
   dash:     {t:'Bosh sahifa',                          s:"Sifat nazorati ko'rsatkichlari"},
   entry:    {t:'Brak kiritish',                        s:'Yangi brak yozuvini kiriting'},
   records:  {t:'Barcha yozuvlar',                      s:"To'liq nuqson tarixi"},
   analytics:{t:'Tahlil',                               s:'Batafsil sifat tahlili'},
-  users:    {t:'Foydalanuvchilar',                     s:'Tizim foydalanuvchilarini boshqarish'},
+  users:        {t:'Foydalanuvchilar',                     s:'Tizim foydalanuvchilarini boshqarish'},
+  histogramma:  {t:'Histogramma',                          s:'PU va TEP sifat tahlili'},
   qayta:    {t:"Qayta ishlab bo'lmaydigan brak",       s:"Tuzatib bo'lmaydigan nuqsonlar"},
   yamala:   {t:'Yamaladigan brak',                     s:"Tuzatilishi mumkin bo'lgan nuqsonlar"},
   orta:     {t:"O'rta brak",                           s:"O'rta darajadagi nuqsonlar"},
