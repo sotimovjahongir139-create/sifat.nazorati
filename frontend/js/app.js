@@ -817,8 +817,8 @@ function setHistMode(material, mode) {
 }
 
 async function renderHistogramma() {
-  if (!localStorage.getItem('histogram_data_cleared_v1') && _isHistAdmin2()) {
-    localStorage.setItem('histogram_data_cleared_v1', '1');
+  if (!localStorage.getItem('histogram_data_cleared_v2') && _isHistAdmin2()) {
+    localStorage.setItem('histogram_data_cleared_v2', '1');
     Object.keys(localStorage)
       .filter(k => k.startsWith('hist_models_') || k.startsWith('hist_grams_'))
       .forEach(k => localStorage.removeItem(k));
@@ -898,10 +898,43 @@ function _renderHistCharts() {
   function buildChart(material, canvasId, barColor, borderColor) {
     const mode     = material === 'PU' ? _histPUMode : _histTEPMode;
     const filtered = filterByMode(material, mode);
-    const entries  = aggregateByModel(filtered);
-
     destroyC('hist' + material);
     const canvas = document.getElementById(canvasId);
+    const listEl = document.getElementById(material === 'PU' ? 'histListPU' : 'histListTEP');
+
+    if (mode === 'haftalik') {
+      const wkDays  = currentWeekDays();
+      const dayQtys = wkDays.map(d => filtered.filter(r => r.date === d.date).reduce((s, r) => s + (parseInt(r.qty) || 1), 0));
+      const dayEntr = wkDays.map((d, i) => ({ model: d.label, qty: dayQtys[i], gram: '' }));
+      const hasData = dayQtys.some(v => v > 0);
+      if (hasData && canvas) {
+        charts['hist' + material] = new Chart(canvas.getContext('2d'), {
+          type: 'bar',
+          data: { labels: wkDays.map(d => d.label), datasets: [{ data: dayQtys,
+            backgroundColor: barColor, borderColor: borderColor, borderWidth: 1, borderRadius: 6, borderSkipped: false
+          }]},
+          options: {
+            responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } },
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { color: GRID }, ticks: { color: TC, font: { size: 9 } } },
+              y: { grid: { color: GRID }, ticks: { color: TC, font: { size: 10 }, precision: 0 }, beginAtZero: true }
+            }
+          },
+          plugins: [makeBarLabelPlugin(dayEntr)]
+        });
+      }
+      if (listEl) {
+        listEl.innerHTML = hasData
+          ? wkDays.map((d, i) => dayQtys[i] > 0
+              ? `<li class="hist-stat-li"><span class="hist-stat-name">${d.label}</span><span class="hist-stat-cnt">${dayQtys[i]}</span></li>`
+              : '').join('')
+          : `<li class="hist-stat-empty">Ma'lumot yo'q</li>`;
+      }
+      return;
+    }
+
+    const entries = aggregateByModel(filtered);
     if (entries.length && canvas) {
       charts['hist' + material] = new Chart(canvas.getContext('2d'), {
         type: 'bar',
@@ -929,8 +962,6 @@ function _renderHistCharts() {
         plugins: [makeBarLabelPlugin(entries)]
       });
     }
-
-    const listEl = document.getElementById(material === 'PU' ? 'histListPU' : 'histListTEP');
     if (listEl) {
       listEl.innerHTML = entries.length
         ? entries.map(e => {
