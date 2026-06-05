@@ -600,8 +600,21 @@ async function removeUser(id, username) {
 }
 
 // ── HISTOGRAMMA MODULE ───────────────────────────────────────
-let _histData = [];
-let _histMat  = null;
+let _histData    = [];
+let _histMat     = null;
+let _histPUMode  = 'oylik';
+let _histTEPMode = 'oylik';
+
+function _getHistCustomModels(mat) {
+  try { return JSON.parse(localStorage.getItem('hist_models_' + mat) || '[]'); } catch { return []; }
+}
+function _saveHistCustomModel(mat, name) {
+  const list = _getHistCustomModels(mat);
+  if (!list.includes(name)) {
+    list.push(name);
+    localStorage.setItem('hist_models_' + mat, JSON.stringify(list));
+  }
+}
 
 function setupHistogramma() {
   document.getElementById('hDate').value = todayLocal();
@@ -619,18 +632,17 @@ function selectHistMat(mat) {
   document.querySelectorAll('.hist-mat-btn').forEach(b =>
     b.classList.toggle('active', b.id === 'hMatBtn-' + mat)
   );
-  const modelSel = document.getElementById('hModel');
-  const models   = HIST_MODELS[mat] || [];
-  modelSel.innerHTML = '<option value="">Modelni tanlang...</option>' +
-    models.map(m => `<option value="${m}">${m}</option>`).join('');
+  const all = [...new Set([...(HIST_MODELS[mat] || []), ..._getHistCustomModels(mat)])];
+  document.getElementById('hModelList').innerHTML = all.map(m => `<option value="${m}">`).join('');
+  document.getElementById('hModel').value = '';
   document.getElementById('hModelWrap').style.display = 'block';
   document.getElementById('hGramWrap').style.display  = 'none';
   document.getElementById('hGram').value = '';
 }
 
-function onHistModelChange() {
-  const model = document.getElementById('hModel').value;
-  if (model) {
+function onHistModelInput() {
+  const val = document.getElementById('hModel').value.trim();
+  if (val) {
     const gramSel = document.getElementById('hGram');
     gramSel.innerHTML = '<option value="">Grammni tanlang...</option>' +
       HIST_GRAMS.map(g => `<option value="${g}">${g} g</option>`).join('');
@@ -640,10 +652,19 @@ function onHistModelChange() {
   }
 }
 
+function addHistCustomModel() {
+  const val = document.getElementById('hModel').value.trim();
+  if (!val || !_histMat) { toast("Model nomini kiriting.", 'e'); return; }
+  _saveHistCustomModel(_histMat, val);
+  const all = [...new Set([...(HIST_MODELS[_histMat] || []), ..._getHistCustomModels(_histMat)])];
+  document.getElementById('hModelList').innerHTML = all.map(m => `<option value="${m}">`).join('');
+  toast("Model qo'shildi!", 's');
+}
+
 async function saveHistogramma() {
   const date          = document.getElementById('hDate').value;
   const material_type = _histMat;
-  const model         = document.getElementById('hModel').value;
+  const model         = document.getElementById('hModel').value.trim();
   const gram          = document.getElementById('hGram').value;
 
   if (!date || !material_type || !model || !gram) {
@@ -653,6 +674,7 @@ async function saveHistogramma() {
 
   try {
     await apiPostHistogramma({ date, material_type, model, gram });
+    _saveHistCustomModel(material_type, model);
     const succEl = document.getElementById('histSuccMsg');
     succEl.style.display = 'flex';
     toast('Saqlandi!', 's');
@@ -667,6 +689,16 @@ async function saveHistogramma() {
   }
 }
 
+function setHistMode(material, mode) {
+  if (material === 'PU') _histPUMode = mode;
+  else _histTEPMode = mode;
+  ['oylik', 'haftalik'].forEach(m => {
+    const btn = document.getElementById('hist' + material + 'Tab-' + m);
+    if (btn) btn.classList.toggle('active', m === mode);
+  });
+  _renderHistCharts();
+}
+
 async function renderHistogramma() {
   try {
     _histData = await apiGetHistogramma() || [];
@@ -678,12 +710,50 @@ async function renderHistogramma() {
 
 function _renderHistCharts() {
   const data = _histData;
+  const now  = new Date();
 
-  function buildChart(material, canvasId, barColor, borderColor) {
-    const mat = data.filter(r => r.material_type === material);
-    const counts = {};
-    mat.forEach(r => { counts[r.model] = (counts[r.model] || 0) + 1; });
-    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  function filterByMode(mat, mode) {
+    const matData = data.filter(r => r.material_type === mat);
+    if (mode === 'haftalik') {
+      const dow = now.getDay();
+      const mon = new Date(now);
+      mon.setDate(now.getDate() + (dow === 0 ? -6 : 1 - dow));
+      mon.setHours(0, 0, 0, 0);
+      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+      const monStr = ymdLocal(mon), sunStr = ymdLocal(sun);
+      return matData.filter(r => r.date >= monStr && r.date <= sunStr);
+    }
+    return matData.filter(r => {
+      const d = new Date(r.date + 'T00:00:00');
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    });
+  }
+
+  const barLabelPlugin = {
+    id: 'histBarLabel',
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach((ds, i) => {
+        chart.getDatasetMeta(i).data.forEach((bar, j) => {
+          const v = ds.data[j]; if (!v) return;
+          ctx.save();
+          ctx.fillStyle = 'rgba(228,228,248,.9)';
+          ctx.font = 'bold 11px Segoe UI,sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(v, bar.x, bar.y - 3);
+          ctx.restore();
+        });
+      });
+    }
+  };
+
+  function buildChart(material, canvasId, barColor, borderColor, withLabels) {
+    const mode     = material === 'PU' ? _histPUMode : _histTEPMode;
+    const filtered = filterByMode(material, mode);
+    const counts   = {};
+    filtered.forEach(r => { counts[r.model] = (counts[r.model] || 0) + 1; });
+    const entries  = Object.entries(counts).sort((a, b) => b[1] - a[1]);
 
     destroyC('hist' + material);
     const canvas = document.getElementById(canvasId);
@@ -704,12 +774,14 @@ function _renderHistCharts() {
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          layout: withLabels ? { padding: { top: 20 } } : {},
           plugins: { legend: { display: false } },
           scales: {
             x: { grid: { color: GRID }, ticks: { color: TC, font: { size: 9 }, maxRotation: 35 } },
             y: { grid: { color: GRID }, ticks: { color: TC, font: { size: 10 }, precision: 0 }, beginAtZero: true }
           }
-        }
+        },
+        plugins: withLabels ? [barLabelPlugin] : []
       });
     }
 
@@ -723,8 +795,8 @@ function _renderHistCharts() {
     }
   }
 
-  buildChart('PU',  'cHistPU',  'rgba(79,142,247,.75)',  '#4f8ef7');
-  buildChart('TEP', 'cHistTEP', 'rgba(46,213,115,.75)',  '#2ed573');
+  buildChart('PU',  'cHistPU',  'rgba(79,142,247,.75)', '#4f8ef7', true);
+  buildChart('TEP', 'cHistTEP', 'rgba(46,213,115,.75)', '#2ed573', false);
 }
 
 // ── HELPERS ──────────────────────────────────────────────────

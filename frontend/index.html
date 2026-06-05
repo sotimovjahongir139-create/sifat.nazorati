@@ -295,9 +295,9 @@
           </div>
           <div id="hModelWrap" style="display:none">
             <label class="flbl">Model</label>
-            <select class="fi" id="hModel" onchange="onHistModelChange()">
-              <option value="">Modelni tanlang...</option>
-            </select>
+            <input type="text" class="fi" id="hModel" placeholder="Model nomini kiriting..." oninput="onHistModelInput()" autocomplete="off" list="hModelList">
+            <datalist id="hModelList"></datalist>
+            <button type="button" class="reason-add-btn" onclick="addHistCustomModel()" style="margin-top:8px"><i class="fas fa-plus"></i> Yangi model qo'shish</button>
           </div>
           <div id="hGramWrap" style="display:none">
             <label class="flbl">Gramm</label>
@@ -312,12 +312,24 @@
       </div>
       <div class="g22">
         <div class="ccard">
-          <div class="ch"><div><div class="ch-t">PU bo'yicha tahlil</div><div class="ch-s">Model bo'yicha taqsimot</div></div></div>
+          <div class="ch">
+            <div><div class="ch-t">PU bo'yicha tahlil</div><div class="ch-s">Model bo'yicha taqsimot</div></div>
+            <div class="trend-tabs">
+              <button class="ttab active" id="histPUTab-oylik"    onclick="setHistMode('PU','oylik')">Oylik</button>
+              <button class="ttab"        id="histPUTab-haftalik" onclick="setHistMode('PU','haftalik')">Haftalik</button>
+            </div>
+          </div>
           <div class="cbox tall"><canvas id="cHistPU"></canvas></div>
           <ul class="hist-stat-list" id="histListPU"></ul>
         </div>
         <div class="ccard">
-          <div class="ch"><div><div class="ch-t">TEP bo'yicha tahlil</div><div class="ch-s">Model bo'yicha taqsimot</div></div></div>
+          <div class="ch">
+            <div><div class="ch-t">TEP bo'yicha tahlil</div><div class="ch-s">Model bo'yicha taqsimot</div></div>
+            <div class="trend-tabs">
+              <button class="ttab active" id="histTEPTab-oylik"    onclick="setHistMode('TEP','oylik')">Oylik</button>
+              <button class="ttab"        id="histTEPTab-haftalik" onclick="setHistMode('TEP','haftalik')">Haftalik</button>
+            </div>
+          </div>
           <div class="cbox tall"><canvas id="cHistTEP"></canvas></div>
           <ul class="hist-stat-list" id="histListTEP"></ul>
         </div>
