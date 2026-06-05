@@ -817,6 +817,13 @@ function setHistMode(material, mode) {
 }
 
 async function renderHistogramma() {
+  if (!localStorage.getItem('histogram_data_cleared_v1') && _isHistAdmin2()) {
+    localStorage.setItem('histogram_data_cleared_v1', '1');
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('hist_models_') || k.startsWith('hist_grams_'))
+      .forEach(k => localStorage.removeItem(k));
+    try { await apiDeleteHistogramma(); } catch {}
+  }
   try {
     _histData = await apiGetHistogramma() || [];
   } catch {

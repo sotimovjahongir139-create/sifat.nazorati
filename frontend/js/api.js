@@ -98,6 +98,10 @@ async function apiPostHistogramma(record) {
   return apiFetch('/histogramma', { method: 'POST', body: record });
 }
 
+async function apiDeleteHistogramma() {
+  return apiFetch('/histogramma', { method: 'DELETE' });
+}
+
 // ── USERS (admin only) ──────────────────────────────────────
 async function apiGetUsers() {
   return apiFetch('/users');

@@ -87,7 +87,7 @@ function currentWeekDays() {
   const mon = new Date(now);
   mon.setDate(now.getDate() + (dow === 0 ? -6 : 1 - dow));
   mon.setHours(0, 0, 0, 0);
-  return ['Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba','Yakshanba'].map((lbl, i) => {
+  return ['Du','Se','Ch','Pa','Ju','Sh','Ya'].map((lbl, i) => {
     const d = new Date(mon); d.setDate(mon.getDate() + i);
     return { label: lbl, date: ymdLocal(d) };
   });
@@ -192,7 +192,7 @@ function getOffsetWeekDays(offset) {
   const mon = new Date(now);
   mon.setDate(now.getDate() + (dow === 0 ? -6 : 1 - dow) + offset * 7);
   mon.setHours(0, 0, 0, 0);
-  return ['Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba','Yakshanba'].map((lbl, i) => {
+  return ['Du','Se','Ch','Pa','Ju','Sh','Ya'].map((lbl, i) => {
     const d = new Date(mon); d.setDate(mon.getDate() + i);
     return { label: lbl, date: ymdLocal(d) };
   });
@@ -235,35 +235,6 @@ function _makePtLbl(total) {
         ctx.font = 'bold 10px Segoe UI,sans-serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
         ctx.fillText(v + ' (' + pct + '%)', pt.x, pt.y - 7); ctx.restore();
-      });
-    });
-  }};
-}
-
-function _makeCountQtyDayLbl(counts, dayLabels) {
-  return { id: 'cqdLbl', afterDatasetsDraw(c) {
-    const ctx = c.ctx;
-    c.data.datasets.forEach((ds, i) => {
-      c.getDatasetMeta(i).data.forEach((bar, j) => {
-        const qty = ds.data[j]; if (qty == null || qty === 0) return;
-        const cnt  = counts[j];
-        const barH = bar.base - bar.y;
-        ctx.save();
-        ctx.fillStyle = '#c8c8e8';
-        ctx.font = 'bold 10px Segoe UI,sans-serif';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-        ctx.fillText((cnt != null && cnt > 0) ? cnt + ' (' + qty + ')' : String(qty), bar.x, bar.y - 4);
-        if (dayLabels && dayLabels[j] && barH > 35) {
-          ctx.save();
-          ctx.translate(bar.x, bar.y + barH / 2);
-          ctx.rotate(-Math.PI / 2);
-          ctx.fillStyle = 'rgba(255,255,255,.5)';
-          ctx.font = '8px Segoe UI,sans-serif';
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(dayLabels[j], 0, 0);
-          ctx.restore();
-        }
-        ctx.restore();
       });
     });
   }};
@@ -359,19 +330,15 @@ function renderTrend(data) {
     const valCounts = wdays.map(d => d.date > today ? null : data.filter(r => r.date === d.date).length);
     const wkTotal   = vals.reduce((s, v) => s + (v || 0), 0);
     charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
-      type: 'bar',
+      type: 'line',
       data: { labels: wdays.map(d => d.label), datasets: [{ data: vals,
-        backgroundColor: 'rgba(79,142,247,.75)',
-        borderColor: '#4f8ef7',
-        borderWidth: 1,
-        borderRadius: 5,
-        borderSkipped: false
+        borderColor: '#4f8ef7', backgroundColor: 'rgba(79,142,247,.1)',
+        borderWidth: 2.5, fill: true, tension: .4, spanGaps: false,
+        pointBackgroundColor: wdays.map(d => d.date === today ? '#ff4757' : '#4f8ef7'),
+        pointRadius: wdays.map(d => d.date === today ? 6 : 4)
       }]},
-      options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { display: false } }, scales: {
-        x: { grid: { color: GRID }, ticks: { color: TC, font: { size: 8 }, maxRotation: 35, minRotation: 0 } },
-        y: { grid: { color: GRID }, ticks: { color: TC, font: { size: 10 } }, beginAtZero: true }
-      }},
-      plugins: [_makeCountQtyDayLbl(valCounts, wdays.map(d => d.label))]
+      options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 18 } }, plugins: { legend: { display: false } }, scales: baseScales() },
+      plugins: [_makeCountQtyLbl(valCounts)]
     });
     const chips = [];
     for (let i = 0; i < vals.length - 1; i++) {

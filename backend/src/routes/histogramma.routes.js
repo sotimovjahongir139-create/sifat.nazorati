@@ -1,9 +1,10 @@
 const router      = require('express').Router();
 const requireAuth = require('../middleware/auth.middleware');
-const { list, create } = require('../controllers/histogramma.controller');
+const { list, create, deleteAll } = require('../controllers/histogramma.controller');
 
 router.use(requireAuth);
-router.get('/',  list);
-router.post('/', create);
+router.get('/',    list);
+router.post('/',   create);
+router.delete('/', deleteAll);
 
 module.exports = router;

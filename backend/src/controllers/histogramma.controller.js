@@ -56,4 +56,14 @@ async function create(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, create };
+async function deleteAll(req, res, next) {
+  try {
+    if (req.user.username !== 'admin2') {
+      return res.status(403).json({ error: "Ruxsat yo'q" });
+    }
+    await db.query('DELETE FROM quality_records');
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+}
+
+module.exports = { list, create, deleteAll };
