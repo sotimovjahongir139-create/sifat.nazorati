@@ -61,19 +61,7 @@ const UZ_MONTHS = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','
 const GRID = 'rgba(255,255,255,.05)';
 const TC   = 'rgba(255,255,255,.6)';
 
-const HIST_MODELS = {
-  PU: [
-    'PU0750','PU 23338 Velikan','PU 50738 Behzod','PU Gucci','PU20410',
-    '9092','2104','2283','3316','2099','1207','Tomford',
-    '1603-siliq','1603-yozuvli','Brunelli cucunelli','Hermes Lazerli',
-    '23338','Heval','21128','2712'
-  ],
-  TEP: [
-    '2019 Tep','TEP 301 Loro piana','695 tep','7206 Tep','Boss Tep','1229 TEP',
-    'Baldini','Loro piano 1733','Napoli','Arizona','348','Loro F',
-    'Loro piana 031','Loro piana 2733','589','9910'
-  ]
-};
+const HIST_MODELS = { PU: [], TEP: [] };
 
 const HIST_GRAMS = ['200','250','300','350','400','450','500','550','600','650','700'];
 
@@ -99,7 +87,7 @@ function currentWeekDays() {
   const mon = new Date(now);
   mon.setDate(now.getDate() + (dow === 0 ? -6 : 1 - dow));
   mon.setHours(0, 0, 0, 0);
-  return ['Du','Se','Ch','Pa','Ju','Sh','Ya'].map((lbl, i) => {
+  return ['Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba','Yakshanba'].map((lbl, i) => {
     const d = new Date(mon); d.setDate(mon.getDate() + i);
     return { label: lbl, date: ymdLocal(d) };
   });
@@ -204,7 +192,7 @@ function getOffsetWeekDays(offset) {
   const mon = new Date(now);
   mon.setDate(now.getDate() + (dow === 0 ? -6 : 1 - dow) + offset * 7);
   mon.setHours(0, 0, 0, 0);
-  return ['Du','Se','Ch','Pa','Ju','Sh','Ya'].map((lbl, i) => {
+  return ['Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba','Yakshanba'].map((lbl, i) => {
     const d = new Date(mon); d.setDate(mon.getDate() + i);
     return { label: lbl, date: ymdLocal(d) };
   });
@@ -247,6 +235,35 @@ function _makePtLbl(total) {
         ctx.font = 'bold 10px Segoe UI,sans-serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
         ctx.fillText(v + ' (' + pct + '%)', pt.x, pt.y - 7); ctx.restore();
+      });
+    });
+  }};
+}
+
+function _makeCountQtyDayLbl(counts, dayLabels) {
+  return { id: 'cqdLbl', afterDatasetsDraw(c) {
+    const ctx = c.ctx;
+    c.data.datasets.forEach((ds, i) => {
+      c.getDatasetMeta(i).data.forEach((bar, j) => {
+        const qty = ds.data[j]; if (qty == null || qty === 0) return;
+        const cnt  = counts[j];
+        const barH = bar.base - bar.y;
+        ctx.save();
+        ctx.fillStyle = '#c8c8e8';
+        ctx.font = 'bold 10px Segoe UI,sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText((cnt != null && cnt > 0) ? cnt + ' (' + qty + ')' : String(qty), bar.x, bar.y - 4);
+        if (dayLabels && dayLabels[j] && barH > 35) {
+          ctx.save();
+          ctx.translate(bar.x, bar.y + barH / 2);
+          ctx.rotate(-Math.PI / 2);
+          ctx.fillStyle = 'rgba(255,255,255,.5)';
+          ctx.font = '8px Segoe UI,sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(dayLabels[j], 0, 0);
+          ctx.restore();
+        }
+        ctx.restore();
       });
     });
   }};
@@ -350,8 +367,11 @@ function renderTrend(data) {
         borderRadius: 5,
         borderSkipped: false
       }]},
-      options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { display: false } }, scales: baseScales() },
-      plugins: [_makeCountQtyLbl(valCounts)]
+      options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { display: false } }, scales: {
+        x: { grid: { color: GRID }, ticks: { color: TC, font: { size: 8 }, maxRotation: 35, minRotation: 0 } },
+        y: { grid: { color: GRID }, ticks: { color: TC, font: { size: 10 } }, beginAtZero: true }
+      }},
+      plugins: [_makeCountQtyDayLbl(valCounts, wdays.map(d => d.label))]
     });
     const chips = [];
     for (let i = 0; i < vals.length - 1; i++) {
@@ -381,54 +401,25 @@ function renderTrend(data) {
   } else if (_trendMode === 'oylik') {
     const now = new Date();
     subEl.textContent = 'Bu oy: ' + UZ_MONTHS[now.getMonth()] + ' ' + now.getFullYear();
-    totEl.style.display = 'none'; boxEl.style.display = 'none';
+    totEl.style.display = 'none'; boxEl.style.display = 'block';
     pctEl.style.display = 'none'; pctEl.innerHTML = ''; stEl.style.display = 'none';
+    lstEl.style.display = 'none';
     destroyC('trend'); destroyC('trendM'); destroyC('trendS');
     const mweeks   = currentMonthWeeks();
     const wkTotals = mweeks.map(w => weeklyTotal(data, w.start, w.end));
-    const top5m    = _top5(data, 'sku');
-    const top5r    = _top5(data, 'reason');
-    const mkDs = (keys, field) => keys.map((k, i) => ({
-      label: k,
-      data: mweeks.map(w => data.filter(r => r.date >= w.start && r.date <= w.end && r[field] === k).reduce((s, r) => s + r.qty, 0)),
-      backgroundColor: LINE_COLORS[i] + 'bb',
-      borderColor: LINE_COLORS[i],
-      borderWidth: 1,
-      borderRadius: 4,
-      borderSkipped: false
-    }));
-    const mkLbl = (keys, colors, dsets) => {
-      const vals = dsets.map(ds => ds.data.reduce((s, v) => s + v, 0));
-      const tot  = vals.reduce((s, v) => s + v, 0);
-      return '<div style="display:flex;flex-wrap:wrap;gap:4px 8px;padding:5px 2px 0">' +
-        keys.map((k, i) => { const v = vals[i], pct = tot > 0 ? ((v / tot) * 100).toFixed(0) : '0';
-          return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--text);white-space:nowrap"><span style="width:7px;height:7px;border-radius:1px;background:${colors[i]};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
-        }).join('') + '</div>';
-    };
-    const dsM = mkDs(top5m, 'sku');
-    const dsR = mkDs(top5r, 'reason');
-    lstEl.style.display = 'block';
-    lstEl.innerHTML = `<div style="display:flex;gap:12px">
-      <div style="flex:1;min-width:0"><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:4px;text-align:center">Model</div><div style="height:175px"><canvas id="cTrendM"></canvas></div><div id="oylik-lbl-m"></div></div>
-      <div style="flex:1;min-width:0"><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:4px;text-align:center">Sabab</div><div style="height:175px"><canvas id="cTrendS"></canvas></div><div id="oylik-lbl-s"></div></div>
-    </div>`;
-    const mkOpts = totals => ({
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => {
-          const v   = ctx.parsed.y;
-          const tot = (totals || [])[ctx.dataIndex] || 0;
-          const pct = tot > 0 ? ((v / tot) * 100).toFixed(0) : '0';
-          return ctx.dataset.label + ': ' + v + ' (' + pct + '%)';
-        }}}
-      },
-      scales: baseScales()
+    const wkCounts = mweeks.map(w => data.filter(r => r.date >= w.start && r.date <= w.end).length);
+    charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
+      type: 'bar',
+      data: { labels: mweeks.map(w => w.label), datasets: [{ data: wkTotals,
+        backgroundColor: 'rgba(79,142,247,.75)',
+        borderColor: '#4f8ef7',
+        borderWidth: 1,
+        borderRadius: 5,
+        borderSkipped: false
+      }]},
+      options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { display: false } }, scales: baseScales() },
+      plugins: [_makeCountQtyLbl(wkCounts)]
     });
-    charts.trendM = new Chart(document.getElementById('cTrendM').getContext('2d'), { type: 'bar', data: { labels: mweeks.map(w => w.label), datasets: dsM }, options: mkOpts(wkTotals) });
-    charts.trendS = new Chart(document.getElementById('cTrendS').getContext('2d'), { type: 'bar', data: { labels: mweeks.map(w => w.label), datasets: dsR }, options: mkOpts(wkTotals) });
-    document.getElementById('oylik-lbl-m').innerHTML = mkLbl(top5m, LINE_COLORS, dsM);
-    document.getElementById('oylik-lbl-s').innerHTML = mkLbl(top5r, LINE_COLORS, dsR);
 
   // ── Model / Sabab multi-line ──
   } else {
