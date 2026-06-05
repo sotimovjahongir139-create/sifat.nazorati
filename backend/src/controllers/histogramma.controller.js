@@ -34,8 +34,8 @@ async function list(req, res, next) {
 
 async function create(req, res, next) {
   try {
-    const { date, material_type, model, gram, qty } = req.body;
-    if (!date || !material_type || !model || !gram || !qty) {
+    const { date, material_type, model, gram = '', qty } = req.body;
+    if (!date || !material_type || !model || !qty) {
       return res.status(400).json({ error: "Barcha majburiy maydonlarni to'ldiring" });
     }
     if (!VALID_MATERIALS.includes(material_type)) {

@@ -252,6 +252,23 @@ function _makePtLbl(total) {
   }};
 }
 
+function _makeCountQtyLbl(counts) {
+  return { id: 'cqLbl', afterDatasetsDraw(c) {
+    const ctx = c.ctx;
+    c.data.datasets.forEach((ds, i) => {
+      c.getDatasetMeta(i).data.forEach((pt, j) => {
+        const qty = ds.data[j]; if (qty == null || qty === 0) return;
+        const cnt = counts[j];
+        const lbl = (cnt != null && cnt > 0) ? cnt + ' (' + qty + ')' : String(qty);
+        ctx.save(); ctx.fillStyle = '#c8c8e8';
+        ctx.font = 'bold 10px Segoe UI,sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(lbl, pt.x, pt.y - 4); ctx.restore();
+      });
+    });
+  }};
+}
+
 function _makeMultiPtLbl(weekTotals) {
   return { id: 'multiPtLbl', afterDatasetsDraw(c) {
     const ctx  = c.ctx;
@@ -321,18 +338,20 @@ function renderTrend(data) {
     totEl.style.display = 'none'; boxEl.style.display = 'block';
     lstEl.style.display = 'none'; pctEl.innerHTML = ''; stEl.style.display = 'none';
     destroyC('trend'); destroyC('trendM'); destroyC('trendS');
-    const vals   = wdays.map(d => d.date > today ? null : data.filter(r => r.date === d.date).reduce((s, r) => s + r.qty, 0));
-    const wkTotal = vals.reduce((s, v) => s + (v || 0), 0);
+    const vals      = wdays.map(d => d.date > today ? null : data.filter(r => r.date === d.date).reduce((s, r) => s + r.qty, 0));
+    const valCounts = wdays.map(d => d.date > today ? null : data.filter(r => r.date === d.date).length);
+    const wkTotal   = vals.reduce((s, v) => s + (v || 0), 0);
     charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
-      type: 'line',
+      type: 'bar',
       data: { labels: wdays.map(d => d.label), datasets: [{ data: vals,
-        borderColor: '#4f8ef7', backgroundColor: 'rgba(79,142,247,.1)',
-        borderWidth: 2.5, fill: true, tension: .4, spanGaps: false,
-        pointBackgroundColor: wdays.map(d => d.date === today ? '#ff4757' : '#4f8ef7'),
-        pointRadius: wdays.map(d => d.date === today ? 6 : 4)
+        backgroundColor: 'rgba(79,142,247,.75)',
+        borderColor: '#4f8ef7',
+        borderWidth: 1,
+        borderRadius: 5,
+        borderSkipped: false
       }]},
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: baseScales() },
-      plugins: [_makePtLbl(wkTotal)]
+      options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { display: false } }, scales: baseScales() },
+      plugins: [_makeCountQtyLbl(valCounts)]
     });
     const chips = [];
     for (let i = 0; i < vals.length - 1; i++) {
@@ -372,8 +391,11 @@ function renderTrend(data) {
     const mkDs = (keys, field) => keys.map((k, i) => ({
       label: k,
       data: mweeks.map(w => data.filter(r => r.date >= w.start && r.date <= w.end && r[field] === k).reduce((s, r) => s + r.qty, 0)),
-      borderColor: LINE_COLORS[i], backgroundColor: LINE_COLORS[i] + '22',
-      borderWidth: 2, pointBackgroundColor: LINE_COLORS[i], pointRadius: 4, fill: false, tension: .4
+      backgroundColor: LINE_COLORS[i] + 'bb',
+      borderColor: LINE_COLORS[i],
+      borderWidth: 1,
+      borderRadius: 4,
+      borderSkipped: false
     }));
     const mkLbl = (keys, colors, dsets) => {
       const vals = dsets.map(ds => ds.data.reduce((s, v) => s + v, 0));
@@ -403,8 +425,8 @@ function renderTrend(data) {
       },
       scales: baseScales()
     });
-    charts.trendM = new Chart(document.getElementById('cTrendM').getContext('2d'), { type: 'line', data: { labels: mweeks.map(w => w.label), datasets: dsM }, options: mkOpts(wkTotals) });
-    charts.trendS = new Chart(document.getElementById('cTrendS').getContext('2d'), { type: 'line', data: { labels: mweeks.map(w => w.label), datasets: dsR }, options: mkOpts(wkTotals) });
+    charts.trendM = new Chart(document.getElementById('cTrendM').getContext('2d'), { type: 'bar', data: { labels: mweeks.map(w => w.label), datasets: dsM }, options: mkOpts(wkTotals) });
+    charts.trendS = new Chart(document.getElementById('cTrendS').getContext('2d'), { type: 'bar', data: { labels: mweeks.map(w => w.label), datasets: dsR }, options: mkOpts(wkTotals) });
     document.getElementById('oylik-lbl-m').innerHTML = mkLbl(top5m, LINE_COLORS, dsM);
     document.getElementById('oylik-lbl-s').innerHTML = mkLbl(top5r, LINE_COLORS, dsR);
 

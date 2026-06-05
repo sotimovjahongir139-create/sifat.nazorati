@@ -299,17 +299,27 @@
             <div class="hist-model-list" id="hModelListBox"></div>
             <button type="button" class="reason-add-btn" id="hModelAddBtn" onclick="addHistCustomModel()" style="margin-top:8px"><i class="fas fa-plus"></i> Yangi model qo'shish</button>
           </div>
+          <div id="hGramWrap" style="display:none">
+            <label class="flbl">Gramm</label>
+            <select class="fi" id="hGram" onchange="onHistGramChange()">
+              <option value="">— Grammni tanlang —</option>
+            </select>
+            <div id="hGramAddRow" style="display:none;margin-top:8px">
+              <input type="number" class="fi" id="hNewGram" min="1" placeholder="Yangi gramm (masalan: 350)" style="margin-bottom:7px">
+              <div style="display:flex;gap:7px">
+                <button type="button" class="btn-save" style="padding:9px 16px;font-size:12px" onclick="addHistCustomGram()"><i class="fas fa-check"></i> Qo'shish</button>
+                <button type="button" class="btn-can" style="padding:9px 14px;font-size:12px" onclick="toggleGramAdd()">Bekor</button>
+              </div>
+            </div>
+            <button type="button" class="reason-add-btn" id="hGramAddBtn" onclick="toggleGramAdd()" style="margin-top:8px;display:none"><i class="fas fa-plus"></i> Yangi gramm qo'shish</button>
+          </div>
           <div id="hMiqdorWrap" style="display:none">
             <label class="flbl">Miqdor</label>
             <input type="number" class="fi" id="hMiqdor" min="1" placeholder="Miqdorni kiriting">
           </div>
-          <div id="hGramWrap" style="display:none">
-            <label class="flbl">Gramm</label>
-            <input type="number" class="fi" id="hGram" min="1" placeholder="Grammni kiriting">
-          </div>
         </div>
         <div class="fact">
-          <button class="btn-save" id="histSaveBtn" onclick="saveHistogramma()"><i class="fas fa-save"></i> Saqlash</button>
+          <button class="btn-save" id="histSaveBtn" onclick="saveHistogramma()" style="display:none"><i class="fas fa-save"></i> Saqlash</button>
         </div>
       </div>
       <div class="g22">

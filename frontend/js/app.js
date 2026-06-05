@@ -607,18 +607,13 @@ let _histTEPMode = 'oylik';
 let _histPUModel  = '';
 let _histTEPModel = '';
 
-function _isHistAdmin() { return getCurrentUser()?.username === 'admin2'; }
+function _isHistAdmin2() { return getCurrentUser()?.username === 'admin2'; }
+function _isHistAdmin()  { return getCurrentUser()?.username === 'admin'; }
 
 function _applyHistRoles() {
-  const can = _isHistAdmin();
-  const miqdorWrap = document.getElementById('hMiqdorWrap');
-  const gramWrap   = document.getElementById('hGramWrap');
-  const addBtn     = document.getElementById('hModelAddBtn');
-  const saveBtn    = document.getElementById('histSaveBtn');
-  if (miqdorWrap) miqdorWrap.style.display = (can && _histMat) ? 'block' : 'none';
-  if (gramWrap)   gramWrap.style.display   = (can && _histMat) ? 'block' : 'none';
-  if (addBtn)     addBtn.style.display     = can ? '' : 'none';
-  if (saveBtn)    saveBtn.style.display    = can ? 'flex' : 'none';
+  const full   = _isHistAdmin2();
+  const addBtn = document.getElementById('hModelAddBtn');
+  if (addBtn) addBtn.style.display = full ? '' : 'none';
 }
 
 function setHistModelFilter(material, model) {
@@ -652,6 +647,52 @@ function _getAllHistModels(mat) {
   return [...new Set([...(HIST_MODELS[mat] || []), ..._getHistCustomModels(mat)])];
 }
 
+function _getHistGrams(mat, model) {
+  try { return JSON.parse(localStorage.getItem('hist_grams_' + mat + '_' + model) || '[]'); } catch { return []; }
+}
+function _saveHistGram(mat, model, gram) {
+  const list = _getHistGrams(mat, model);
+  if (!list.includes(String(gram))) { list.push(String(gram)); localStorage.setItem('hist_grams_' + mat + '_' + model, JSON.stringify(list)); }
+}
+function _renderGramSelect(mat, model) {
+  const grams = _getHistGrams(mat, model);
+  const sel   = document.getElementById('hGram');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Grammni tanlang —</option>' +
+    grams.map(g => `<option value="${g}">${g} gr</option>`).join('');
+}
+
+function onHistGramChange() {
+  const val      = document.getElementById('hGram').value;
+  const canWrite = _isHistAdmin2() || _isHistAdmin();
+  document.getElementById('hMiqdorWrap').style.display = (val && canWrite) ? 'block' : 'none';
+  const saveBtn = document.getElementById('histSaveBtn');
+  if (saveBtn) saveBtn.style.display = (val && canWrite) ? 'flex' : 'none';
+}
+
+function toggleGramAdd() {
+  const row = document.getElementById('hGramAddRow');
+  if (!row) return;
+  const open = row.style.display === 'block';
+  row.style.display = open ? 'none' : 'block';
+  if (!open) { const inp = document.getElementById('hNewGram'); if (inp) inp.value = ''; }
+}
+
+function addHistCustomGram() {
+  if (!_histMat) return;
+  const model = document.getElementById('hModel').value.trim();
+  const gram  = document.getElementById('hNewGram').value.trim();
+  if (!model) { toast("Avval model tanlang.", 'e'); return; }
+  if (!gram || isNaN(parseFloat(gram)) || parseFloat(gram) < 1) { toast("Gramm qiymatini kiriting.", 'e'); return; }
+  _saveHistGram(_histMat, model, gram);
+  _renderGramSelect(_histMat, model);
+  document.getElementById('hGram').value = gram;
+  document.getElementById('hGramAddRow').style.display = 'none';
+  document.getElementById('hNewGram').value = '';
+  onHistGramChange();
+  toast("Gramm qo'shildi!", 's');
+}
+
 function renderHistModelList(q) {
   const all      = _getAllHistModels(_histMat || 'PU');
   const filtered = q ? all.filter(m => m.toLowerCase().includes(q.toLowerCase())) : all;
@@ -665,17 +706,36 @@ function renderHistModelList(q) {
 
 function selectHistModelFromList(model) {
   document.getElementById('hModel').value = model;
-  renderHistModelList(document.getElementById('hModel').value.trim());
+  renderHistModelList(model);
+  const canWrite = _isHistAdmin2() || _isHistAdmin();
+  if (canWrite && _histMat) {
+    const gramWrap = document.getElementById('hGramWrap');
+    if (gramWrap) gramWrap.style.display = 'block';
+    _renderGramSelect(_histMat, model);
+    document.getElementById('hGram').value = '';
+    const addGramBtn = document.getElementById('hGramAddBtn');
+    if (addGramBtn) addGramBtn.style.display = _isHistAdmin2() ? '' : 'none';
+    const gramAddRow = document.getElementById('hGramAddRow');
+    if (gramAddRow) gramAddRow.style.display = 'none';
+  }
+  document.getElementById('hMiqdorWrap').style.display = 'none';
+  const saveBtn = document.getElementById('histSaveBtn');
+  if (saveBtn) saveBtn.style.display = 'none';
 }
 
 function setupHistogramma() {
   document.getElementById('hDate').value = todayLocal();
   document.getElementById('hModelWrap').style.display  = 'none';
-  document.getElementById('hMiqdorWrap').style.display = 'none';
   document.getElementById('hGramWrap').style.display   = 'none';
+  document.getElementById('hMiqdorWrap').style.display = 'none';
+  const gramAddRow = document.getElementById('hGramAddRow');
+  if (gramAddRow) gramAddRow.style.display = 'none';
+  const saveBtn = document.getElementById('histSaveBtn');
+  if (saveBtn) saveBtn.style.display = 'none';
   document.getElementById('hModel').value  = '';
   document.getElementById('hMiqdor').value = '';
-  document.getElementById('hGram').value   = '';
+  const hGram = document.getElementById('hGram');
+  if (hGram) hGram.innerHTML = '<option value="">— Grammni tanlang —</option>';
   document.getElementById('histSuccMsg').style.display = 'none';
   document.querySelectorAll('.hist-mat-btn').forEach(b => b.classList.remove('active'));
   _histMat = null;
@@ -689,8 +749,15 @@ function selectHistMat(mat) {
   );
   document.getElementById('hModel').value  = '';
   document.getElementById('hMiqdor').value = '';
-  document.getElementById('hGram').value   = '';
-  document.getElementById('hModelWrap').style.display = 'block';
+  const hGram = document.getElementById('hGram');
+  if (hGram) hGram.innerHTML = '<option value="">— Grammni tanlang —</option>';
+  document.getElementById('hModelWrap').style.display  = 'block';
+  document.getElementById('hGramWrap').style.display   = 'none';
+  document.getElementById('hMiqdorWrap').style.display = 'none';
+  const gramAddRow = document.getElementById('hGramAddRow');
+  if (gramAddRow) gramAddRow.style.display = 'none';
+  const saveBtn = document.getElementById('histSaveBtn');
+  if (saveBtn) saveBtn.style.display = 'none';
   renderHistModelList('');
   _applyHistRoles();
 }
@@ -711,10 +778,10 @@ async function saveHistogramma() {
   const date          = document.getElementById('hDate').value;
   const material_type = _histMat;
   const model         = document.getElementById('hModel').value.trim();
-  const qty           = parseInt(document.getElementById('hMiqdor').value);
   const gram          = document.getElementById('hGram').value.trim();
+  const qty           = parseInt(document.getElementById('hMiqdor').value);
 
-  if (!date || !material_type || !model || !qty || qty < 1 || !gram) {
+  if (!date || !material_type || !model || !gram || !qty || qty < 1) {
     toast("Barcha maydonlarni to'ldiring.", 'e');
     return;
   }
@@ -728,10 +795,12 @@ async function saveHistogramma() {
     setTimeout(() => { succEl.style.display = 'none'; }, 2000);
     _histData = await apiGetHistogramma() || [];
     _renderHistCharts();
-    document.getElementById('hModel').value  = '';
     document.getElementById('hMiqdor').value = '';
     document.getElementById('hGram').value   = '';
-    renderHistModelList('');
+    _renderGramSelect(material_type, model);
+    document.getElementById('hMiqdorWrap').style.display = 'none';
+    const saveBtn = document.getElementById('histSaveBtn');
+    if (saveBtn) saveBtn.style.display = 'none';
   } catch (err) {
     toast(err.message || 'Saqlashda xatolik', 'e');
   }
