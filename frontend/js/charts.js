@@ -165,11 +165,10 @@ function calcPctChips(data) {
     } else if (prev === 0) {
       cls = 'pc-r'; pctTxt = '+100%'; arrow = '↑';
     } else {
-      const chg = (curr - prev) / prev * 100;
-      const abs = Math.abs(chg).toFixed(1);
-      if (chg > 0.05)      { cls = 'pc-r'; pctTxt = '+' + abs + '%'; arrow = '↑'; }
-      else if (chg < -0.05){ cls = 'pc-g'; pctTxt = '-' + abs + '%'; arrow = '↓'; }
-      else                  { pctTxt = '0%'; }
+      const pct = (curr / prev * 100).toFixed(1);
+      if (curr > prev)      { cls = 'pc-r'; pctTxt = '+' + pct + '%'; arrow = '↑'; }
+      else if (curr < prev) { cls = 'pc-g'; pctTxt = '-' + pct + '%'; arrow = '↓'; }
+      else                  { pctTxt = pct + '%'; }
     }
     return `<div class="pct-chip ${cls}"><span class="pct-lbl">${prevLbl} → ${currLbl}</span><span class="pct-val">${pctTxt} ${arrow}</span></div>`;
   }).join('');
@@ -355,9 +354,10 @@ function renderTrend(data) {
       if (v2 === 0)  { cls = 'pc-g'; pctTxt = '-100% ↓'; }
       else if (!base){ cls = 'pc-r'; pctTxt = '+100% ↑'; }
       else {
-        const diff = Math.round(((v2 - base) / base) * 100);
-        if (diff > 0)      { cls = 'pc-r'; pctTxt = '+' + diff + '% ↑'; }
-        else if (diff < 0) { cls = 'pc-g'; pctTxt = diff + '% ↓'; }
+        const pct = (v2 / base * 100).toFixed(1);
+        if (v2 > base)      { cls = 'pc-r'; pctTxt = '+' + pct + '% ↑'; }
+        else if (v2 < base) { cls = 'pc-g'; pctTxt = '-' + pct + '% ↓'; }
+        else                { pctTxt = pct + '%'; }
       }
       chips.push(`<div class="pct-chip ${cls}"><span class="pct-lbl">${wdays[i].label} → ${wdays[i + 1].label}</span><span class="pct-val">${pctTxt}</span></div>`);
     }

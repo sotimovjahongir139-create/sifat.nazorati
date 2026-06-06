@@ -424,9 +424,9 @@ function renderAnalytics() {
     ['#ffd43b','#aaa','#ff6b35',...Array(7).fill('#6666aa')],
     ['rgba(255,212,59,.5)','rgba(170,170,170,.35)','rgba(255,107,53,.45)',...Array(7).fill('rgba(100,100,170,.3)')],
     null, aMTotal);
-  renderRankList('aReasonRank',
-    REASONS.map(r => ({ name: r, total: reasonTotal(aMData, r) })).sort((a, b) => b.total - a.total),
-    rColors, rColors.map(c => c + '66'), null, aMTotal);
+  const aReasonItems = REASONS.map(r => ({ name: r, total: reasonTotal(aMData, r) })).sort((a, b) => b.total - a.total);
+  const aTotalCauses = aReasonItems.reduce((s, it) => s + it.total, 0);
+  renderRankList('aReasonRank', aReasonItems, rColors, rColors.map(c => c + '66'), null, aTotalCauses);
 }
 
 // ── CATEGORY PAGES ───────────────────────────────────────────
