@@ -167,7 +167,7 @@ function calcPctChips(data) {
     } else {
       const pct = (curr / prev * 100).toFixed(1);
       if (curr > prev)      { cls = 'pc-r'; pctTxt = '+' + pct + '%'; arrow = '↑'; }
-      else if (curr < prev) { cls = 'pc-g'; pctTxt = '-' + pct + '%'; arrow = '↓'; }
+      else if (curr < prev) { cls = 'pc-g'; pctTxt = '+' + pct + '%'; arrow = '↓'; }
       else                  { pctTxt = pct + '%'; }
     }
     return `<div class="pct-chip ${cls}"><span class="pct-lbl">${prevLbl} → ${currLbl}</span><span class="pct-val">${pctTxt} ${arrow}</span></div>`;
@@ -385,7 +385,7 @@ function renderTrend(data) {
         borderSkipped: false
       }]},
       options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { display: false } }, scales: baseScales() },
-      plugins: [_makeCountQtyLbl(wkCounts)]
+      plugins: [_makeCountQtyLbl([])]
     });
 
   // ── Model / Sabab multi-line ──
