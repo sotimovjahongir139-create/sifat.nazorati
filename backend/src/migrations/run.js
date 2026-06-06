@@ -8,7 +8,7 @@ const SEED_USERS = [
   { username: 'operator2',      password: 'oper123',       role: 'operator' },
   { username: 'operator3',      password: 'oper123',       role: 'operator' },
   { username: 'admin3',         password: 'arkon10_sifat', role: 'admin3'   },
-  { username: 'admin14',        password: 'arkon14_sifat', role: 'admin14'  },
+  { username: 'admin14',        password: 'arkon14_sifat', role: 'admin'    },
 ];
 
 async function runMigrations() {
@@ -19,14 +19,17 @@ async function runMigrations() {
       id            SERIAL PRIMARY KEY,
       username      VARCHAR(50)  UNIQUE NOT NULL,
       password_hash TEXT         NOT NULL,
-      role          VARCHAR(20)  NOT NULL CHECK (role IN ('admin','boss','operator','admin3','admin14')),
+      role          VARCHAR(20)  NOT NULL CHECK (role IN ('admin','boss','operator','admin3')),
       created_at    TIMESTAMPTZ  DEFAULT NOW()
     )
   `);
 
-  // Idempotent: expand role constraint to include admin3
+  // Migrate admin14 role from 'admin14' → 'admin' so existing privilege checks work
+  await db.query(`UPDATE users SET role='admin' WHERE username='admin14' AND role='admin14'`);
+
+  // Idempotent: rebuild role constraint (drop admin14, keep admin3)
   await db.query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`);
-  await db.query(`ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','boss','operator','admin3','admin14'))`);
+  await db.query(`ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','boss','operator','admin3'))`);
 
   await db.query(`
     CREATE TABLE IF NOT EXISTS entries (

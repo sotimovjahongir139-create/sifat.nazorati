@@ -20,9 +20,13 @@ function showApp(user) {
   const initials = (user.username || 'U')[0].toUpperCase();
   document.querySelector('.sb-av').textContent = initials;
   document.querySelector('.sb-ud h4').textContent = user.username;
-  const roleLabel = { admin: 'Administrator', boss: 'Rahbar', operator: 'Operator', admin3: 'AI Analitik', admin14: 'AI Analitika' };
-  document.querySelector('.sb-ud p').textContent = roleLabel[user.role] || user.role;
-  // Show admin-only nav items (hidden for admin3)
+  const roleLabel = { admin: 'Administrator', boss: 'Rahbar', operator: 'Operator', admin3: 'AI Analitik' };
+  // admin14 has role='admin' — label by username for clarity
+  document.querySelector('.sb-ud p').textContent =
+    user.username === 'admin14' ? 'Administrator + AI' :
+    user.username === 'admin3'  ? 'AI Analitik'        :
+    roleLabel[user.role] || user.role;
+  // Show admin-only nav items (admin role, excluding admin3 special user)
   document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = (user.role === 'admin' && user.username !== 'admin3') ? '' : 'none';
   });
