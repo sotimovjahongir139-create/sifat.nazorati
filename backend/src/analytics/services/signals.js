@@ -71,14 +71,15 @@ function detectSignals(entries, topModels) {
   if (topModels.length >= 2) {
     const top    = parseInt(topModels[0].total);
     const second = parseInt(topModels[1].total);
+    const label  = topModels[0].model || topModels[0].sku || topModels[0].name || 'Noma\'lum';
     if (top > second * 2 && top > 10) {
       signals.push({
         type:     'model_spike',
         severity: 'high',
-        model:    topModels[0].model || topModels[0].sku,
+        model:    label,
         total:    top,
         ratio:    (top / second).toFixed(1),
-        message:  `"${topModels[0].model || topModels[0].sku}" modeli 2× dan ko'p brak bermoqda (${top} ta)`,
+        message:  `"${label}" modeli 2× dan ko'p brak bermoqda (${top} ta)`,
       });
     }
   }

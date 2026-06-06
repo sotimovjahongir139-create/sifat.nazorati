@@ -156,14 +156,19 @@ function _ai14RenderChips(analysis) {
       <span class="ai14-chip-lbl">Kritik signal</span>
     </div>
     <div class="ai14-chip">
+      <span class="ai14-chip-ico">📅</span>
+      <span class="ai14-chip-val">${s.today_total ?? '—'}</span>
+      <span class="ai14-chip-lbl">Bugun (dashboard)</span>
+    </div>
+    <div class="ai14-chip">
       <span class="ai14-chip-ico">📦</span>
-      <span class="ai14-chip-val">${s.totalDefects || 0}</span>
-      <span class="ai14-chip-lbl">Jami brak</span>
+      <span class="ai14-chip-val">${s.month_total ?? '—'}</span>
+      <span class="ai14-chip-lbl">Bu oy (dashboard)</span>
     </div>
     <div class="ai14-chip">
       <span class="ai14-chip-ico">🏭</span>
       <span class="ai14-chip-val">${s.uniqueModels || 0}</span>
-      <span class="ai14-chip-lbl">Model</span>
+      <span class="ai14-chip-lbl">Model turi</span>
     </div>
     <div class="ai14-chip">
       <span class="ai14-chip-ico">🔍</span>

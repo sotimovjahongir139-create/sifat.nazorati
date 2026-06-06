@@ -4,7 +4,7 @@ function analyzeRootCauses(entries) {
   // Model × Reason cross-matrix
   const matrix = {};
   entries.forEach(e => {
-    const model  = e.sku || e.model || 'Noma\'lum';
+    const model  = e.sku || e.model || e.name || 'Noma\'lum';
     const reason = e.reason || 'Noma\'lum';
     const key    = `${model}|||${reason}`;
     matrix[key]  = (matrix[key] || 0) + parseInt(e.qty || 1);
@@ -39,7 +39,7 @@ function analyzeRootCauses(entries) {
   // Category breakdown
   const catMap = {};
   entries.forEach(e => {
-    const cat = e.category || 'other';
+    const cat = e.category || e.cat || 'other';
     catMap[cat] = (catMap[cat] || 0) + parseInt(e.qty || 1);
   });
   const catTotal   = Object.values(catMap).reduce((a, b) => a + b, 0);

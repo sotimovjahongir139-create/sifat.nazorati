@@ -17,7 +17,7 @@ function generateRecommendations(topModels, topReasons, signals, forecastData, c
 
   // Top model focus
   if (topModels.length > 0) {
-    const top3 = topModels.slice(0, 3).map(m => `${m.model || m.sku} (${m.total})`).join(', ');
+    const top3 = topModels.slice(0, 3).map(m => `${m.model || m.name || m.sku} (${m.total})`).join(', ');
     recs.push({
       priority: 'high',
       category: 'quality_control',
