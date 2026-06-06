@@ -7,6 +7,7 @@ const SEED_USERS = [
   { username: 'sifat_nazorati', password: 'arkon09_sifat', role: 'operator' },
   { username: 'operator2',      password: 'oper123',       role: 'operator' },
   { username: 'operator3',      password: 'oper123',       role: 'operator' },
+  { username: 'admin3',         password: 'arkon10_sifat', role: 'admin3'   },
 ];
 
 async function runMigrations() {
@@ -17,10 +18,14 @@ async function runMigrations() {
       id            SERIAL PRIMARY KEY,
       username      VARCHAR(50)  UNIQUE NOT NULL,
       password_hash TEXT         NOT NULL,
-      role          VARCHAR(20)  NOT NULL CHECK (role IN ('admin','boss','operator')),
+      role          VARCHAR(20)  NOT NULL CHECK (role IN ('admin','boss','operator','admin3')),
       created_at    TIMESTAMPTZ  DEFAULT NOW()
     )
   `);
+
+  // Idempotent: expand role constraint to include admin3
+  await db.query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`);
+  await db.query(`ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','boss','operator','admin3'))`);
 
   await db.query(`
     CREATE TABLE IF NOT EXISTS entries (

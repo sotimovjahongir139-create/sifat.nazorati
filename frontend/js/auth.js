@@ -20,11 +20,15 @@ function showApp(user) {
   const initials = (user.username || 'U')[0].toUpperCase();
   document.querySelector('.sb-av').textContent = initials;
   document.querySelector('.sb-ud h4').textContent = user.username;
-  const roleLabel = { admin: 'Administrator', boss: 'Rahbar', operator: 'Operator' };
+  const roleLabel = { admin: 'Administrator', boss: 'Rahbar', operator: 'Operator', admin3: 'AI Analitik' };
   document.querySelector('.sb-ud p').textContent = roleLabel[user.role] || user.role;
-  // Show admin-only nav items
+  // Show admin-only nav items (hidden for admin3)
   document.querySelectorAll('.admin-only').forEach(el => {
-    el.style.display = user.role === 'admin' ? '' : 'none';
+    el.style.display = (user.role === 'admin' && user.username !== 'admin3') ? '' : 'none';
+  });
+  // Show AI-only nav items (admin3 only)
+  document.querySelectorAll('.ai-only').forEach(el => {
+    el.style.display = user.username === 'admin3' ? '' : 'none';
   });
   goPage('dash');
 }

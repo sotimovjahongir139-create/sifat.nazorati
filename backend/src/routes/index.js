@@ -9,6 +9,7 @@ router.use('/analytics', require('./stats.routes'));     // backward compat
 router.use('/users',     require('./users.routes'));
 router.use('/reasons',      require('./reasons.routes'));
 router.use('/histogramma', require('./histogramma.routes'));
+router.use('/ai',          require('./ai.routes'));
 
 router.get('/health', (_req, res) =>
   res.json({ status: 'ok', ts: new Date().toISOString() })
