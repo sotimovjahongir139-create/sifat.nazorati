@@ -20,7 +20,7 @@ function showApp(user) {
   const initials = (user.username || 'U')[0].toUpperCase();
   document.querySelector('.sb-av').textContent = initials;
   document.querySelector('.sb-ud h4').textContent = user.username;
-  const roleLabel = { admin: 'Administrator', boss: 'Rahbar', operator: 'Operator', admin3: 'AI Analitik' };
+  const roleLabel = { admin: 'Administrator', boss: 'Rahbar', operator: 'Operator', admin3: 'AI Analitik', admin14: 'AI Analitika' };
   document.querySelector('.sb-ud p').textContent = roleLabel[user.role] || user.role;
   // Show admin-only nav items (hidden for admin3)
   document.querySelectorAll('.admin-only').forEach(el => {
@@ -29,6 +29,10 @@ function showApp(user) {
   // Show AI-only nav items (admin3 only)
   document.querySelectorAll('.ai-only').forEach(el => {
     el.style.display = user.username === 'admin3' ? '' : 'none';
+  });
+  // Show AI14-only nav items (admin14 only)
+  document.querySelectorAll('.ai14-only').forEach(el => {
+    el.style.display = user.username === 'admin14' ? '' : 'none';
   });
   goPage('dash');
 }

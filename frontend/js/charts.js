@@ -73,6 +73,7 @@ const PAGE_META = {
   users:        {t:'Foydalanuvchilar',                     s:'Tizim foydalanuvchilarini boshqarish'},
   histogramma:  {t:'Histogramma',                          s:'PU va TEP sifat tahlili'},
   ai:           {t:'AI Analitika',                         s:'Claude AI yordamida chuqur tahlil'},
+  'ai14':       {t:'Analitika',                            s:'Aqlli AI tahlil tizimi — signallar, prognoz, tavsiyalar'},
   qayta:    {t:"Qayta ishlab bo'lmaydigan brak",       s:"Tuzatib bo'lmaydigan nuqsonlar"},
   yamala:   {t:'Yamaladigan brak',                     s:"Tuzatilishi mumkin bo'lgan nuqsonlar"},
   orta:     {t:"O'rta brak",                           s:"O'rta darajadagi nuqsonlar"},
