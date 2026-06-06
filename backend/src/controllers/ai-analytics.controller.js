@@ -1,8 +1,8 @@
 'use strict';
 
-const db                     = require('../config/database');
-const { runAnalysis }        = require('../analytics/services/ai_engine');
-const { checkAI, getApiKey } = require('../analytics/services/config');
+const db                               = require('../config/database');
+const { runAnalysis }                  = require('../analytics/services/ai_engine');
+const { checkAI, getApiKey, aiStatus } = require('../analytics/services/config');
 
 const SYSTEM_PROMPT =
   "Sen sifat nazorati bo'yicha mutaxassis data-analitiksan. Senga real fabrika ishlab chiqarish ma'lumotlari va statistik tahlil natijalari beriladi.\n\n" +
@@ -236,4 +236,11 @@ async function analyze(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { analyze };
+async function status(req, res) {
+  if (req.user.username !== 'admin14') {
+    return res.status(403).json({ error: "Ruxsat yo'q" });
+  }
+  res.json(aiStatus());
+}
+
+module.exports = { analyze, status };

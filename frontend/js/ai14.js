@@ -22,6 +22,35 @@ function setupAI14() {
   _ai14Analysis = null;
   _ai14ActiveTab = 'signals';
   _ai14RenderShell();
+  _ai14CheckStatus();
+}
+
+async function _ai14CheckStatus() {
+  try {
+    const st = await apiFetch('/ai-analytics/status', { method: 'GET' });
+    if (!st.available) {
+      const btn = document.getElementById('ai14RunBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.title    = 'ANTHROPIC_API_KEY o\'rnatilmagan';
+      }
+      const header = document.querySelector('#page-ai14 .ai14-header');
+      if (header) {
+        const banner = document.createElement('div');
+        banner.style.cssText = 'background:#2a2040;border:1px solid var(--yellow,#f5c542);border-radius:10px;padding:14px 18px;margin-top:14px;display:flex;align-items:flex-start;gap:12px;font-size:13px;line-height:1.5';
+        banner.innerHTML =
+          '<i class="fas fa-triangle-exclamation" style="color:var(--yellow,#f5c542);font-size:20px;flex-shrink:0;margin-top:2px"></i>' +
+          '<div><strong style="font-size:14px;display:block;margin-bottom:4px">AI xizmati sozlanmagan</strong>' +
+          'ANTHROPIC_API_KEY muhit o\'zgaruvchisi o\'rnatilmagan. ' +
+          'Boshqa funksiyalar (dashboard, jadvallar, histogramma, tahlil) to\'liq ishlayapti.<br>' +
+          '<span style="color:var(--text2,#9090b0);margin-top:6px;display:block">' +
+          'Sozlash uchun: Render dashboard → Environment → Add <code>ANTHROPIC_API_KEY=sk-ant-...</code></span></div>';
+        header.after(banner);
+      }
+    }
+  } catch (_) {
+    // status check failure is non-critical — page still works
+  }
 }
 
 function _ai14RenderShell() {
