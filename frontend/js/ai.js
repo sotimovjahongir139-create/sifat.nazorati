@@ -91,7 +91,11 @@ async function startAIAnalysis() {
     btn.innerHTML = '<i class="fas fa-sync-alt"></i> Qayta tahlil qilish';
     btn.disabled  = false;
   } catch (e) {
-    out.innerHTML = `<div class="ai-error"><i class="fas fa-exclamation-circle"></i> Xatolik: ${_esc(e.message || 'Server bilan ulanishda muammo')}</div>`;
+    const msg = e.message || '';
+    const isUnavailable = msg.includes('mavjud emas') || msg.includes('503') || msg.includes('502');
+    out.innerHTML = isUnavailable
+      ? `<div class="ai-error"><i class="fas fa-clock"></i> AI xizmati vaqtincha mavjud emas. Tizim administratori bilan bog'laning.</div>`
+      : `<div class="ai-error"><i class="fas fa-exclamation-circle"></i> Xatolik: ${_esc(msg || 'Server bilan ulanishda muammo')}</div>`;
     btn.innerHTML = '<i class="fas fa-robot"></i> AI Tahlil Boshlash';
     btn.disabled  = false;
   }

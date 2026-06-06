@@ -1,7 +1,8 @@
 'use strict';
 
-const db              = require('../config/database');
-const { runAnalysis } = require('../analytics/services/ai_engine');
+const db                     = require('../config/database');
+const { runAnalysis }        = require('../analytics/services/ai_engine');
+const { checkAI, getApiKey } = require('../analytics/services/config');
 
 const SYSTEM_PROMPT =
   "Sen sifat nazorati bo'yicha mutaxassis data-analitiksan. Senga real fabrika ishlab chiqarish ma'lumotlari va statistik tahlil natijalari beriladi.\n\n" +
@@ -19,10 +20,11 @@ async function analyze(req, res, next) {
       return res.status(403).json({ error: "Ruxsat yo'q — faqat admin14 uchun" });
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: "ANTHROPIC_API_KEY sozlanmagan" });
+    const aiCheck = checkAI();
+    if (!aiCheck.ok) {
+      return res.status(aiCheck.status).json({ error: aiCheck.error });
     }
+    const apiKey = getApiKey();
 
     // ── EXACT SAME date helpers as stats.controller ────────────────────────
     const now   = new Date();
@@ -198,24 +200,31 @@ async function analyze(req, res, next) {
       ? messages
       : [{ role: 'user', content: initialPrompt }];
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method:  'POST',
-      headers: {
-        'x-api-key':         apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type':      'application/json',
-      },
-      body: JSON.stringify({
-        model:      'claude-opus-4-8',
-        max_tokens: 4096,
-        system:     SYSTEM_PROMPT + '\n\nStatistik ma\'lumotlar:\n' + JSON.stringify(context, null, 2),
-        messages:   apiMessages,
-      }),
-    });
+    let response;
+    try {
+      response = await fetch('https://api.anthropic.com/v1/messages', {
+        method:  'POST',
+        headers: {
+          'x-api-key':         apiKey,
+          'anthropic-version': '2023-06-01',
+          'content-type':      'application/json',
+        },
+        body: JSON.stringify({
+          model:      'claude-opus-4-8',
+          max_tokens: 4096,
+          system:     SYSTEM_PROMPT + '\n\nStatistik ma\'lumotlar:\n' + JSON.stringify(context, null, 2),
+          messages:   apiMessages,
+        }),
+      });
+    } catch (_fetchErr) {
+      return res.status(503).json({ error: "AI xizmati vaqtincha mavjud emas. Administrator bilan bog'laning." });
+    }
 
     if (!response.ok) {
       const errBody = await response.json().catch(() => ({}));
-      return res.status(502).json({ error: errBody.error?.message || 'Anthropic API xatosi' });
+      const msg     = errBody.error?.message || '';
+      const status  = response.status === 401 || response.status === 403 ? 503 : 502;
+      return res.status(status).json({ error: msg || "AI xizmati vaqtincha mavjud emas. Administrator bilan bog'laning." });
     }
 
     const result = await response.json();

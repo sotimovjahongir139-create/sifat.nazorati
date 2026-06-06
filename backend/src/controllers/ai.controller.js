@@ -1,4 +1,5 @@
-const db = require('../config/database');
+const db             = require('../config/database');
+const { checkAI, getApiKey } = require('../analytics/services/config');
 
 async function analyze(req, res, next) {
   try {
@@ -6,10 +7,11 @@ async function analyze(req, res, next) {
       return res.status(403).json({ error: "Ruxsat yo'q" });
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: "ANTHROPIC_API_KEY sozlanmagan. Render env vars yoki .env ga qo'shing." });
+    const aiCheck = checkAI();
+    if (!aiCheck.ok) {
+      return res.status(aiCheck.status).json({ error: aiCheck.error });
     }
+    const apiKey = getApiKey();
 
     const [entriesR, topModelsR, topReasonsR, trendR, categoryR, weekR] = await Promise.all([
       db.query(`
@@ -64,24 +66,31 @@ async function analyze(req, res, next) {
       ? messages
       : [{ role: 'user', content: "Ushbu ma'lumotlarni to'liq tahlil qil. Barcha bo'limlarni qamrab ol." }];
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key':          apiKey,
-        'anthropic-version':  '2023-06-01',
-        'content-type':       'application/json',
-      },
-      body: JSON.stringify({
-        model:      'claude-opus-4-8',
-        max_tokens: 4096,
-        system:     systemPrompt,
-        messages:   apiMessages,
-      }),
-    });
+    let response;
+    try {
+      response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key':          apiKey,
+          'anthropic-version':  '2023-06-01',
+          'content-type':       'application/json',
+        },
+        body: JSON.stringify({
+          model:      'claude-opus-4-8',
+          max_tokens: 4096,
+          system:     systemPrompt,
+          messages:   apiMessages,
+        }),
+      });
+    } catch (_fetchErr) {
+      return res.status(503).json({ error: "AI xizmati vaqtincha mavjud emas. Administrator bilan bog'laning." });
+    }
 
     if (!response.ok) {
       const errBody = await response.json().catch(() => ({}));
-      return res.status(502).json({ error: errBody.error?.message || 'Anthropic API xatosi' });
+      const msg     = errBody.error?.message || '';
+      const status  = response.status === 401 || response.status === 403 ? 503 : 502;
+      return res.status(status).json({ error: msg || "AI xizmati vaqtincha mavjud emas. Administrator bilan bog'laning." });
     }
 
     const result = await response.json();

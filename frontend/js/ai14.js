@@ -125,10 +125,21 @@ async function ai14Run() {
     btn.innerHTML = '<i class="fas fa-sync-alt"></i> Qayta tahlil qilish';
     btn.disabled  = false;
   } catch (e) {
+    const msg = e.message || '';
+    const isUnavailable = msg.includes('mavjud emas') || msg.includes('503') || msg.includes('502');
+    const errHtml = isUnavailable
+      ? `<div class="ai14-card"><div class="ai14-card-body" style="display:flex;align-items:center;gap:12px;padding:24px">
+           <i class="fas fa-clock" style="font-size:28px;color:var(--yellow);flex-shrink:0"></i>
+           <div>
+             <div style="font-weight:700;font-size:14px;margin-bottom:5px">AI xizmati vaqtincha mavjud emas</div>
+             <div style="font-size:13px;color:var(--text2)">Tizim administratori ANTHROPIC_API_KEY kalitini sozlashi kerak. Boshqa funksiyalar (dashboard, jadvallar, histogramma) to'liq ishlayapti.</div>
+           </div>
+         </div></div>`
+      : `<div class="ai14-card"><div class="ai14-card-body" style="color:var(--red)"><i class="fas fa-exclamation-circle"></i> Xatolik: ${_ai14Esc(msg || 'Ulanishda muammo')}</div></div>`;
     AI14_TABS.forEach(t => {
       if (t.id === 'chat') return;
       const p = document.getElementById('ai14Panel-' + t.id);
-      if (p) p.innerHTML = `<div class="ai14-card"><div class="ai14-card-body" style="color:var(--red)"><i class="fas fa-exclamation-circle"></i> Xatolik: ${_ai14Esc(e.message || 'Ulanishda muammo')}</div></div>`;
+      if (p) p.innerHTML = errHtml;
     });
     btn.innerHTML = '<i class="fas fa-play"></i> Tahlilni boshlash';
     btn.disabled  = false;
@@ -474,8 +485,11 @@ async function ai14ChatSend() {
     }
   } catch (e) {
     const el = document.getElementById(loadId);
+    const chatMsg = (e.message || '').includes('mavjud emas')
+      ? 'AI xizmati vaqtincha mavjud emas.'
+      : _ai14Esc(e.message || 'Xatolik');
     if (el) el.querySelector('.ai14-chat-bubble').innerHTML =
-      `<span style="color:var(--red)"><i class="fas fa-exclamation-circle"></i> ${_ai14Esc(e.message || 'Xatolik')}</span>`;
+      `<span style="color:var(--yellow)"><i class="fas fa-clock"></i> ${chatMsg}</span>`;
     _ai14History.pop();
   } finally {
     if (sendBtn) sendBtn.disabled = false;
