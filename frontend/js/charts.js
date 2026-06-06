@@ -165,7 +165,7 @@ function calcPctChips(data) {
     } else if (prev === 0) {
       cls = 'pc-r'; pctTxt = '+100%'; arrow = '↑';
     } else {
-      const pct = (curr / prev * 100).toFixed(1);
+      const pct = (Math.min(curr, prev) / Math.max(curr, prev) * 100).toFixed(1);
       if (curr > prev)      { cls = 'pc-r'; pctTxt = '+' + pct + '%'; arrow = '↑'; }
       else if (curr < prev) { cls = 'pc-g'; pctTxt = '+' + pct + '%'; arrow = '↓'; }
       else                  { pctTxt = pct + '%'; }
@@ -256,6 +256,21 @@ function _makeCountQtyLbl(counts) {
   }};
 }
 
+function _makeQtyParenLbl() {
+  return { id: 'qpLbl', afterDatasetsDraw(c) {
+    const ctx = c.ctx;
+    c.data.datasets.forEach((ds, i) => {
+      c.getDatasetMeta(i).data.forEach((pt, j) => {
+        const qty = ds.data[j]; if (qty == null || qty === 0) return;
+        ctx.save(); ctx.fillStyle = '#c8c8e8';
+        ctx.font = 'bold 10px Segoe UI,sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText('(' + qty + ')', pt.x, pt.y - 4); ctx.restore();
+      });
+    });
+  }};
+}
+
 function _makeMultiPtLbl(weekTotals) {
   return { id: 'multiPtLbl', afterDatasetsDraw(c) {
     const ctx  = c.ctx;
@@ -325,9 +340,8 @@ function renderTrend(data) {
     totEl.style.display = 'none'; boxEl.style.display = 'block';
     lstEl.style.display = 'none'; pctEl.innerHTML = ''; stEl.style.display = 'none';
     destroyC('trend'); destroyC('trendM'); destroyC('trendS');
-    const vals      = wdays.map(d => d.date > today ? null : data.filter(r => r.date === d.date).reduce((s, r) => s + r.qty, 0));
-    const valCounts = wdays.map(d => d.date > today ? null : data.filter(r => r.date === d.date).length);
-    const wkTotal   = vals.reduce((s, v) => s + (v || 0), 0);
+    const vals    = wdays.map(d => d.date > today ? null : data.filter(r => r.date === d.date).reduce((s, r) => s + r.qty, 0));
+    const wkTotal = vals.reduce((s, v) => s + (v || 0), 0);
     charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
       type: 'line',
       data: { labels: wdays.map(d => d.label), datasets: [{ data: vals,
@@ -337,7 +351,7 @@ function renderTrend(data) {
         pointRadius: wdays.map(d => d.date === today ? 6 : 4)
       }]},
       options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 18 } }, plugins: { legend: { display: false } }, scales: baseScales() },
-      plugins: [_makeCountQtyLbl(valCounts)]
+      plugins: [_makeQtyParenLbl()]
     });
     const chips = [];
     for (let i = 0; i < vals.length - 1; i++) {
@@ -354,7 +368,7 @@ function renderTrend(data) {
       if (v2 === 0)  { cls = 'pc-g'; pctTxt = '-100% ↓'; }
       else if (!base){ cls = 'pc-r'; pctTxt = '+100% ↑'; }
       else {
-        const pct = (v2 / base * 100).toFixed(1);
+        const pct = (Math.min(v2, base) / Math.max(v2, base) * 100).toFixed(1);
         if (v2 > base)      { cls = 'pc-r'; pctTxt = '+' + pct + '% ↑'; }
         else if (v2 < base) { cls = 'pc-g'; pctTxt = '-' + pct + '% ↓'; }
         else                { pctTxt = pct + '%'; }
