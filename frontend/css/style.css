@@ -185,10 +185,10 @@ textarea.fi{resize:vertical;min-height:88px}
 .mob-overlay.open{display:block}
 
 /* TREND TOGGLE TABS */
-.trend-tabs{display:flex;background:transparent;border:none;border-radius:8px;padding:2px;gap:4px}
-.ttab{background:transparent;border:1px solid rgba(255,255,255,0.1);color:#6b7280;font-size:11px;font-weight:600;cursor:pointer;padding:5px 10px;border-radius:6px;transition:all .15s;font-family:inherit}
-.ttab.active{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
-.ttab:hover:not(.active){background:rgba(59,130,246,.1);color:var(--text);border-color:rgba(255,255,255,0.2)}
+.trend-tabs{display:flex;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px}
+.ttab{background:none;border:none;color:#6b7280;font-size:11px;font-weight:600;cursor:pointer;padding:5px 10px;border-radius:6px;transition:all .15s;font-family:inherit}
+.ttab.active{background:#1d4ed8;color:#fff}
+.ttab:hover:not(.active){background:rgba(59,130,246,.1);color:var(--text)}
 
 /* TREND LIST (model/sabab mode) */
 .tl-total{font-size:19px;font-weight:800;color:var(--blue);margin-bottom:10px;padding:4px 0}
