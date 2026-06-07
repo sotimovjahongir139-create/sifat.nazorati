@@ -58,8 +58,8 @@ const REASON_COLORS = [
 ];
 
 const UZ_MONTHS = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
-const GRID = 'rgba(255,255,255,.05)';
-const TC   = 'rgba(255,255,255,.6)';
+const GRID = 'rgba(255,255,255,.04)';
+const TC   = '#6b7280';
 
 const HIST_MODELS = { PU: [], TEP: [] };
 
@@ -326,7 +326,7 @@ function renderTrend(data) {
     charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
       type: 'line',
       data: { labels: months.map(m => m.label), datasets: [{ label: 'Braklar', data: months.map(m => monthlyTotal(data, m.y, m.m)),
-        borderColor: '#4f8ef7', backgroundColor: 'rgba(79,142,247,.1)',
+        borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.08)',
         borderWidth: 2.5, pointBackgroundColor: '#4f8ef7', pointRadius: 4, fill: true, tension: .4
       }]},
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: baseScales() }
@@ -347,7 +347,7 @@ function renderTrend(data) {
     charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
       type: 'line',
       data: { labels: wdays.map(d => d.label), datasets: [{ data: vals,
-        borderColor: '#4f8ef7', backgroundColor: 'rgba(79,142,247,.1)',
+        borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.08)',
         borderWidth: 2.5, fill: true, tension: .4, spanGaps: false,
         pointBackgroundColor: wdays.map(d => d.date === today ? '#ff4757' : '#4f8ef7'),
         pointRadius: wdays.map(d => d.date === today ? 6 : 4)
@@ -394,8 +394,8 @@ function renderTrend(data) {
     charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
       type: 'bar',
       data: { labels: mweeks.map(w => w.label), datasets: [{ data: wkTotals,
-        backgroundColor: 'rgba(79,142,247,.75)',
-        borderColor: '#4f8ef7',
+        backgroundColor: 'rgba(59,130,246,.75)',
+        borderColor: '#3b82f6',
         borderWidth: 1,
         borderRadius: 5,
         borderSkipped: false
