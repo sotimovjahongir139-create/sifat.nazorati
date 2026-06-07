@@ -1,5 +1,8 @@
-const db             = require('../config/database');
-const { checkAI, getApiKey } = require('../analytics/services/config');
+'use strict';
+
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const db = require('../config/database');
+const { checkAI, getApiKey, toGeminiHistory } = require('../analytics/services/config');
 
 async function analyze(req, res, next) {
   try {
@@ -11,7 +14,6 @@ async function analyze(req, res, next) {
     if (!aiCheck.ok) {
       return res.status(aiCheck.status).json({ error: aiCheck.error });
     }
-    const apiKey = getApiKey();
 
     const [entriesR, topModelsR, topReasonsR, trendR, categoryR, weekR] = await Promise.all([
       db.query(`
@@ -55,46 +57,41 @@ async function analyze(req, res, next) {
       recent_50_entries:      entriesR.rows.slice(0, 50),
     }, null, 2);
 
-    const systemPrompt =
+    const systemInstruction =
       "Sen sifat nazorati bo'yicha ekspert data-analitiksan. Senga real fabrika ishlab chiqarish nuqsonlari ma'lumotlari beriladi. " +
       "Quyidagilarni qil: 1) Eng kritik muammolarni aniqla va xavf darajasini belgilа (Yuqori/O'rta/Past) " +
       "2) Har bir model uchun alohida tavsiya ber 3) Nuqson sabablari bo'yicha chuqur tahlil qil " +
       "4) Keyingi 7 kun uchun bashorat qil 5) Ishlab chiqarishni yaxshilash uchun 5 ta konkret qadam tavsiya qil. " +
       "Javobni o'zbek tilida, professional va aniq yoz.\n\nReal fabrika ma'lumotlari:\n" + dataContext;
 
-    const apiMessages = messages.length > 0
-      ? messages
-      : [{ role: 'user', content: "Ushbu ma'lumotlarni to'liq tahlil qil. Barcha bo'limlarni qamrab ol." }];
-
-    let response;
+    let responseText;
     try {
-      response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'x-api-key':          apiKey,
-          'anthropic-version':  '2023-06-01',
-          'content-type':       'application/json',
-        },
-        body: JSON.stringify({
-          model:      'claude-opus-4-8',
-          max_tokens: 4096,
-          system:     systemPrompt,
-          messages:   apiMessages,
-        }),
+      const genAI = new GoogleGenerativeAI(getApiKey());
+      const model = genAI.getGenerativeModel({
+        model:             'gemini-2.5-flash',
+        systemInstruction,
       });
-    } catch (_fetchErr) {
+
+      if (messages.length > 0) {
+        // Multi-turn: history = all but last message, then send last user message
+        const history  = toGeminiHistory(messages.slice(0, -1));
+        const lastMsg  = messages[messages.length - 1].content;
+        const chat     = model.startChat({ history });
+        const result   = await chat.sendMessage(lastMsg);
+        responseText   = result.response.text();
+      } else {
+        const result = await model.generateContent("Ushbu ma'lumotlarni to'liq tahlil qil. Barcha bo'limlarni qamrab ol.");
+        responseText = result.response.text();
+      }
+    } catch (aiErr) {
+      const msg = aiErr.message || '';
+      if (msg.includes('API_KEY') || msg.includes('401') || msg.includes('403')) {
+        return res.status(503).json({ error: "AI xizmati vaqtincha mavjud emas — API kalit tekshiruvi muvaffaqiyatsiz." });
+      }
       return res.status(503).json({ error: "AI xizmati vaqtincha mavjud emas. Administrator bilan bog'laning." });
     }
 
-    if (!response.ok) {
-      const errBody = await response.json().catch(() => ({}));
-      const msg     = errBody.error?.message || '';
-      const status  = response.status === 401 || response.status === 403 ? 503 : 502;
-      return res.status(status).json({ error: msg || "AI xizmati vaqtincha mavjud emas. Administrator bilan bog'laning." });
-    }
-
-    const result = await response.json();
-    res.json({ text: result.content?.[0]?.text || '', usage: result.usage });
+    res.json({ text: responseText });
   } catch (err) { next(err); }
 }
 

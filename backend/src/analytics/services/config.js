@@ -1,30 +1,30 @@
 'use strict';
 
-// Central AI configuration — read-only, sourced from environment only.
+// Central AI configuration — Gemini API.
 // No secrets are logged or exposed via API.
 
 function getApiKey() {
-  return process.env.ANTHROPIC_API_KEY || null;
+  return process.env.GEMINI_API_KEY || null;
 }
 
 function isAIAvailable() {
   const key = getApiKey();
-  return !!(key && key.startsWith('sk-'));
+  return !!(key && key.trim().length > 10);
 }
 
-// Call before any Anthropic API request.
+// Call before any Gemini API request.
 // Returns { ok: true } or { ok: false, status: 503, error: '...' }
 function checkAI() {
   const key = getApiKey();
-  if (!key) {
+  if (!key || key.trim().length === 0) {
     return {
       ok:     false,
       status: 503,
-      error:  "AI xizmati vaqtincha mavjud emas — ANTHROPIC_API_KEY muhit o'zgaruvchisi o'rnatilmagan.",
+      error:  "AI xizmati vaqtincha mavjud emas — GEMINI_API_KEY muhit o'zgaruvchisi o'rnatilmagan.",
       reason: 'missing_key',
     };
   }
-  if (!key.startsWith('sk-')) {
+  if (key.trim().length < 10) {
     return {
       ok:     false,
       status: 503,
@@ -51,10 +51,19 @@ function aiStatus() {
 function logStartup() {
   const key = getApiKey();
   if (key) {
-    console.log(`[AI] ANTHROPIC_API_KEY: SET (${key.length} chars, prefix: ${key.slice(0, 7)}...)`);
+    console.log(`[AI] GEMINI_API_KEY: SET (${key.length} chars, prefix: ${key.slice(0, 7)}...)`);
   } else {
-    console.warn('[AI] ANTHROPIC_API_KEY: MISSING — AI endpoints will return 503. Set the key in Render environment variables.');
+    console.warn('[AI] GEMINI_API_KEY: MISSING — AI endpoints will return 503. Set the key in Render environment variables.');
   }
 }
 
-module.exports = { getApiKey, isAIAvailable, checkAI, aiStatus, logStartup };
+// Convert Anthropic-style messages to Gemini history format.
+// Gemini uses role='model' instead of role='assistant'.
+function toGeminiHistory(messages) {
+  return messages.map(m => ({
+    role:  m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: String(m.content || '') }],
+  }));
+}
+
+module.exports = { getApiKey, isAIAvailable, checkAI, aiStatus, logStartup, toGeminiHistory };

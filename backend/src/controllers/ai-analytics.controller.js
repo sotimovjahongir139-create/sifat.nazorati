@@ -1,10 +1,11 @@
 'use strict';
 
-const db                               = require('../config/database');
-const { runAnalysis }                  = require('../analytics/services/ai_engine');
-const { checkAI, getApiKey, aiStatus } = require('../analytics/services/config');
+const { GoogleGenerativeAI }                        = require('@google/generative-ai');
+const db                                            = require('../config/database');
+const { runAnalysis }                               = require('../analytics/services/ai_engine');
+const { checkAI, getApiKey, aiStatus, toGeminiHistory } = require('../analytics/services/config');
 
-const SYSTEM_PROMPT =
+const SYSTEM_INSTRUCTION =
   "Sen sifat nazorati bo'yicha mutaxassis data-analitiksan. Senga real fabrika ishlab chiqarish ma'lumotlari va statistik tahlil natijalari beriladi.\n\n" +
   "TIL QO'LLASH (MAJBURIY):\n" +
   "- Foydalanuvchi o'zbek tilida (lotin) yozsa → o'zbek tilida lotin harflarda javob ber\n" +
@@ -24,7 +25,6 @@ async function analyze(req, res, next) {
     if (!aiCheck.ok) {
       return res.status(aiCheck.status).json({ error: aiCheck.error });
     }
-    const apiKey = getApiKey();
 
     // ── EXACT SAME date helpers as stats.controller ────────────────────────
     const now   = new Date();
@@ -37,47 +37,39 @@ async function analyze(req, res, next) {
       todayR, monthR, topModelMonthR, topReasonR, trendR,
       topModelsR, topReasonsR, entriesR, categoryR, histR,
     ] = await Promise.all([
-      // stats.controller.dashboard() — today total
       db.query(
         'SELECT COALESCE(SUM(qty),0) AS total FROM entries WHERE date=$1',
         [today]
       ),
-      // stats.controller.dashboard() — this month total
       db.query(
         `SELECT COALESCE(SUM(qty),0) AS total FROM entries
          WHERE EXTRACT(YEAR FROM date)=$1 AND EXTRACT(MONTH FROM date)=$2`,
         [year, month]
       ),
-      // stats.controller.dashboard() — top model this month
       db.query(
         `SELECT sku, SUM(qty) AS total FROM entries
          WHERE EXTRACT(YEAR FROM date)=$1 AND EXTRACT(MONTH FROM date)=$2
          GROUP BY sku ORDER BY total DESC LIMIT 1`,
         [year, month]
       ),
-      // stats.controller.dashboard() — top reason all-time
       db.query(
         `SELECT reason, SUM(qty) AS total FROM entries
          GROUP BY reason ORDER BY total DESC LIMIT 1`
       ),
-      // stats.controller.dashboard() — 6-month trend
       db.query(
         `SELECT TO_CHAR(DATE_TRUNC('month',date),'YYYY-MM') AS month,
                 COALESCE(SUM(qty),0) AS total
          FROM entries WHERE date >= NOW() - INTERVAL '6 months'
          GROUP BY month ORDER BY month`
       ),
-      // stats.controller.topModels() — exact query
       db.query(
         `SELECT sku AS name, SUM(qty) AS total
          FROM entries GROUP BY sku ORDER BY total DESC LIMIT 10`
       ),
-      // all reasons with counts
       db.query(
         `SELECT reason, SUM(qty) AS total, COUNT(*) AS occurrences
          FROM entries GROUP BY reason ORDER BY total DESC LIMIT 20`
       ),
-      // defects.controller.list() — same SQL, no privilege filter (admin14 sees all), same LIMIT
       db.query(
         `SELECT e.id,
                 TO_CHAR(e.date,'YYYY-MM-DD') AS date,
@@ -91,12 +83,10 @@ async function analyze(req, res, next) {
          ORDER BY e.created_at DESC
          LIMIT 5000`
       ),
-      // category breakdown
       db.query(
         `SELECT category, SUM(qty) AS total
          FROM entries GROUP BY category ORDER BY total DESC`
       ),
-      // histogramma (quality_records) — same as histogramma.controller.list()
       db.query(
         `SELECT q.id,
                 TO_CHAR(q.date,'YYYY-MM-DD') AS date,
@@ -109,11 +99,11 @@ async function analyze(req, res, next) {
       ),
     ]);
 
-    // Normalise entries: use `sku` from entries table, expose as both `sku` and `model`
+    // Normalise entries
     const entries = entriesR.rows.map(e => ({
       ...e,
-      model:    e.sku,        // alias for analysis modules
-      category: e.cat,        // alias for rootcause
+      model:    e.sku,
+      category: e.cat,
     }));
 
     // Normalise topModels: stats.controller returns `name`, signals.js expects `model`
@@ -134,12 +124,10 @@ async function analyze(req, res, next) {
       total:    parseInt(r.total),
     }));
 
-    const data = { entries, topModels, topReasons, categories };
-
     // ── STATISTICAL ANALYSIS ───────────────────────────────────────────────
-    const analysis = await runAnalysis(data);
+    const analysis = await runAnalysis({ entries, topModels, topReasons, categories });
 
-    // Inject the dashboard numbers so summary exactly matches dashboard
+    // Inject dashboard numbers so summary exactly matches dashboard
     analysis.summary.today_total  = parseInt(todayR.rows[0].total);
     analysis.summary.month_total  = parseInt(monthR.rows[0].total);
     analysis.summary.top_model    = topModelMonthR.rows[0]?.sku   || null;
@@ -151,7 +139,6 @@ async function analyze(req, res, next) {
 
     const { messages = [] } = req.body;
 
-    // ── CONTEXT FOR CLAUDE ─────────────────────────────────────────────────
     const context = {
       dashboard_exact: {
         today_defects:        analysis.summary.today_total,
@@ -183,6 +170,9 @@ async function analyze(req, res, next) {
       summary: analysis.summary,
     };
 
+    const systemWithContext =
+      SYSTEM_INSTRUCTION + '\n\nStatistik ma\'lumotlar:\n' + JSON.stringify(context, null, 2);
+
     const initialPrompt =
       `Dashboard ma'lumotlari:\n` +
       `- Bugungi brak: ${analysis.summary.today_total} ta\n` +
@@ -190,49 +180,39 @@ async function analyze(req, res, next) {
       `- Eng muammoli model: ${analysis.summary.top_model || '—'}\n` +
       `- Eng ko'p sabab: ${analysis.summary.top_reason || '—'}\n\n` +
       `Yuqoridagi to'liq statistik tahlilga asoslanib, quyidagi bo'limlar bo'yicha professional hisobot tuzib ber:\n\n` +
-      `## 🚨 Signallar\nAnomiyal holatlar, xavf signallari va ogohlantirishlarni batafsil izohlа.\n\n` +
-      `## 📈 Prognoz\nStatistik model asosida keyingi 7 kunlik bashoratni izohlа.\n\n` +
+      `## 🚨 Signallar\nAnomiyal holatlar, xavf signallari va ogohlantirishlarni batafsil izohla.\n\n` +
+      `## 📈 Prognoz\nStatistik model asosida keyingi 7 kunlik bashoratni izohla.\n\n` +
       `## ✅ Tavsiyalar\nHar bir tavsiyani amaliy qadamlar bilan tushuntir.\n\n` +
       `## 🔍 Asosiy sabab tahlili\nModel-sabab juftliklari va hafta kuni bo'yicha chuqur tahlil.\n\n` +
       `## 📋 Xulosa\nEng muhim 3 ta topilma va keyingi qadam.`;
 
-    const apiMessages = messages.length > 0
-      ? messages
-      : [{ role: 'user', content: initialPrompt }];
-
-    let response;
+    let responseText;
     try {
-      response = await fetch('https://api.anthropic.com/v1/messages', {
-        method:  'POST',
-        headers: {
-          'x-api-key':         apiKey,
-          'anthropic-version': '2023-06-01',
-          'content-type':      'application/json',
-        },
-        body: JSON.stringify({
-          model:      'claude-opus-4-8',
-          max_tokens: 4096,
-          system:     SYSTEM_PROMPT + '\n\nStatistik ma\'lumotlar:\n' + JSON.stringify(context, null, 2),
-          messages:   apiMessages,
-        }),
+      const genAI = new GoogleGenerativeAI(getApiKey());
+      const model = genAI.getGenerativeModel({
+        model:             'gemini-2.5-flash',
+        systemInstruction: systemWithContext,
       });
-    } catch (_fetchErr) {
+
+      if (messages.length > 0) {
+        const history = toGeminiHistory(messages.slice(0, -1));
+        const lastMsg = messages[messages.length - 1].content;
+        const chat    = model.startChat({ history });
+        const result  = await chat.sendMessage(lastMsg);
+        responseText  = result.response.text();
+      } else {
+        const result = await model.generateContent(initialPrompt);
+        responseText = result.response.text();
+      }
+    } catch (aiErr) {
+      const msg = aiErr.message || '';
+      if (msg.includes('API_KEY') || msg.includes('401') || msg.includes('403')) {
+        return res.status(503).json({ error: "AI xizmati vaqtincha mavjud emas — API kalit tekshiruvi muvaffaqiyatsiz." });
+      }
       return res.status(503).json({ error: "AI xizmati vaqtincha mavjud emas. Administrator bilan bog'laning." });
     }
 
-    if (!response.ok) {
-      const errBody = await response.json().catch(() => ({}));
-      const msg     = errBody.error?.message || '';
-      const status  = response.status === 401 || response.status === 403 ? 503 : 502;
-      return res.status(status).json({ error: msg || "AI xizmati vaqtincha mavjud emas. Administrator bilan bog'laning." });
-    }
-
-    const result = await response.json();
-    res.json({
-      text:     result.content?.[0]?.text || '',
-      analysis,
-      usage:    result.usage,
-    });
+    res.json({ text: responseText, analysis });
   } catch (err) { next(err); }
 }
 

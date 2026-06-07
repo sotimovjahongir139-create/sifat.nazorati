@@ -1,7 +1,11 @@
 node_modules/
 .env
 .env.local
+.env.production
 *.log
 *.DS_Store
 Thumbs.db
 backend/package-lock.json
+config/secrets
+backend/config/secrets
+secrets.local
