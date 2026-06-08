@@ -407,11 +407,9 @@ function renderDrill() {
       <div class="ch"><div><div class="ch-t">Model → Sabab tahlili</div><div class="ch-s">Kategoriya tanlang</div></div></div>
       <div style="display:flex;gap:16px;padding:16px 0 8px">
         <div onclick="drillGoCategory('Padosh')" style="flex:1;padding:28px 16px;background:rgba(59,130,246,.08);border:2px solid rgba(59,130,246,.25);border-radius:12px;cursor:pointer;text-align:center" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='rgba(59,130,246,.25)'">
-          <div style="font-size:28px;margin-bottom:8px">👟</div>
           <div style="font-size:18px;font-weight:700;color:#fff">Padosh</div>
         </div>
         <div onclick="drillGoCategory('Stilka')" style="flex:1;padding:28px 16px;background:rgba(249,115,22,.08);border:2px solid rgba(249,115,22,.25);border-radius:12px;cursor:pointer;text-align:center" onmouseover="this.style.borderColor='#f97316'" onmouseout="this.style.borderColor='rgba(249,115,22,.25)'">
-          <div style="font-size:28px;margin-bottom:8px">👠</div>
           <div style="font-size:18px;font-weight:700;color:#fff">Stilka</div>
         </div>
       </div>`;
