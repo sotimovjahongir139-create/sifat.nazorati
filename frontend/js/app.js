@@ -391,8 +391,98 @@ async function delRecord(id) {
   }
 }
 
+// ── ANALYTICS DRILL-DOWN ────────────────────────────────────
+const _drill = { step: 1, category: null, model: null };
+
+function _drillMonth() {
+  const n = new Date();
+  return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
+}
+
+function renderDrill() {
+  const el = document.getElementById('drillContent');
+  if (!el) return;
+  if (_drill.step === 1) {
+    el.innerHTML = `
+      <div class="ch"><div><div class="ch-t">Model → Sabab tahlili</div><div class="ch-s">Kategoriya tanlang</div></div></div>
+      <div style="display:flex;gap:16px;padding:16px 0 8px">
+        <div onclick="drillGoCategory('Padosh')" style="flex:1;padding:28px 16px;background:rgba(59,130,246,.08);border:2px solid rgba(59,130,246,.25);border-radius:12px;cursor:pointer;text-align:center" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='rgba(59,130,246,.25)'">
+          <div style="font-size:28px;margin-bottom:8px">👟</div>
+          <div style="font-size:18px;font-weight:700;color:#fff">Padosh</div>
+        </div>
+        <div onclick="drillGoCategory('Stilka')" style="flex:1;padding:28px 16px;background:rgba(249,115,22,.08);border:2px solid rgba(249,115,22,.25);border-radius:12px;cursor:pointer;text-align:center" onmouseover="this.style.borderColor='#f97316'" onmouseout="this.style.borderColor='rgba(249,115,22,.25)'">
+          <div style="font-size:28px;margin-bottom:8px">👠</div>
+          <div style="font-size:18px;font-weight:700;color:#fff">Stilka</div>
+        </div>
+      </div>`;
+  } else if (_drill.step === 2) {
+    el.innerHTML = `
+      <div class="ch">
+        <div>
+          <button class="ttab" onclick="drillBack()" style="margin-bottom:6px">← Orqaga</button>
+          <div class="ch-t">${_drill.category} modellari</div>
+          <div class="ch-s">Joriy oy bo'yicha saralangan</div>
+        </div>
+      </div>
+      <ul class="rlist" id="drillList"><li class="rit" style="justify-content:center;padding:20px"><i class="fas fa-spinner fa-spin" style="color:var(--blue)"></i></li></ul>`;
+    apiGetCategoryModels(_drill.category, _drillMonth()).then(res => {
+      const rColors = ['#ffd43b','#aaa','#ff6b35','#4f8ef7','#2ed573','#9c6af8','#2ec4b6','#ff9f43','#55efc4','#ff4757'];
+      const items = (res.models || []);
+      if (!items.length) { document.getElementById('drillList').innerHTML = `<li class="rit"><span style="opacity:.6">Ma'lumot topilmadi</span></li>`; return; }
+      const max = items[0].count || 1;
+      document.getElementById('drillList').innerHTML = items.map((it, i) => {
+        const c = rColors[i % rColors.length];
+        return `<li class="rit" style="cursor:pointer" onclick="drillGoModel('${it.model.replace(/'/g,"\\'")}')">
+          <div class="rnum rn-" style="background:${c}22;color:${c}">${i+1}</div>
+          <div class="rinfo">
+            <div class="rname" style="color:${c}">${it.model}</div>
+            <div class="rbar-wrap"><div class="rbar" style="width:${(it.count/max*100).toFixed(0)}%;background:${c}55"></div></div>
+          </div>
+          <div class="rval">${it.count}<span class="rpct">${it.percentage}%</span></div>
+        </li>`;
+      }).join('');
+    }).catch(() => { document.getElementById('drillList').innerHTML = `<li class="rit"><span style="color:var(--red)">Xatolik yuz berdi</span></li>`; });
+  } else {
+    const uzMonth = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'][new Date().getMonth()];
+    const shortName = _drill.model.replace(/^(Padosh|Stilka)\s*-\s*/i, '');
+    el.innerHTML = `
+      <div class="ch">
+        <div>
+          <button class="ttab" onclick="drillBack()" style="margin-bottom:6px">← Orqaga</button>
+          <div class="ch-t">${shortName} — bu oygi sabablari</div>
+          <div class="ch-s">Jami: <strong id="drillTotal">—</strong> ta &nbsp;|&nbsp; Oy: ${uzMonth}</div>
+        </div>
+      </div>
+      <ul class="rlist" id="drillList"><li class="rit" style="justify-content:center;padding:20px"><i class="fas fa-spinner fa-spin" style="color:var(--blue)"></i></li></ul>`;
+    apiGetModelCauses(_drill.model, _drillMonth()).then(res => {
+      document.getElementById('drillTotal').textContent = res.total || 0;
+      const rColors = ['#ff4757','#ffd43b','#ff6b35','#4f8ef7','#2ed573','#9c6af8','#2ec4b6','#ff9f43','#55efc4'];
+      const causes = (res.causes || []);
+      if (!causes.length) { document.getElementById('drillList').innerHTML = `<li class="rit"><span style="opacity:.6">Ma'lumot topilmadi</span></li>`; return; }
+      const max = causes[0].count || 1;
+      document.getElementById('drillList').innerHTML = causes.map((it, i) => {
+        const c = rColors[i % rColors.length];
+        return `<li class="rit">
+          <div class="rnum rn-" style="background:${c}22;color:${c}">${i+1}</div>
+          <div class="rinfo">
+            <div class="rname" style="color:${c}">${it.cause}</div>
+            <div class="rbar-wrap"><div class="rbar" style="width:${(it.count/max*100).toFixed(0)}%;background:${c}55"></div></div>
+          </div>
+          <div class="rval">${it.count}<span class="rpct">${it.percentage}%</span></div>
+        </li>`;
+      }).join('');
+    }).catch(() => { document.getElementById('drillList').innerHTML = `<li class="rit"><span style="color:var(--red)">Xatolik yuz berdi</span></li>`; });
+  }
+}
+
+function drillGoCategory(cat) { _drill.step = 2; _drill.category = cat; _drill.model = null; renderDrill(); }
+function drillGoModel(model)   { _drill.step = 3; _drill.model = model; renderDrill(); }
+function drillBack()           { _drill.step = Math.max(1, _drill.step - 1); if (_drill.step === 1) _drill.category = null; renderDrill(); }
+
 // ── ANALYTICS ───────────────────────────────────────────────
 function renderAnalytics() {
+  _drill.step = 1; _drill.category = null; _drill.model = null;
+  renderDrill();
   const data = getData(); const months = last6();
 
   destroyC('aTrend');

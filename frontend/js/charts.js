@@ -121,6 +121,11 @@ function _top5(data, field) {
   data.forEach(r => { m[r[field]] = (m[r[field]] || 0) + r.qty; });
   return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k]) => k);
 }
+function _allItems(data, field) {
+  const m = {};
+  data.forEach(r => { m[r[field]] = (m[r[field]] || 0) + r.qty; });
+  return Object.entries(m).sort((a, b) => b[1] - a[1]).map(([k]) => k);
+}
 function last6() {
   const out = []; const now = new Date();
   for (let i = 5; i >= 0; i--) {
@@ -413,7 +418,8 @@ function renderTrend(data) {
     const displayData = (_trendMode === 'model' && _skuFilter)
       ? data.filter(r => r.sku && r.sku.includes(_skuFilter))
       : data;
-    const top5  = _top5(displayData, field);
+    const allKeys = _allItems(displayData, field);
+    const clr = i => LINE_COLORS[i % LINE_COLORS.length];
 
     if (_msSubMode === 'haftalik') {
       const wdays = getOffsetWeekDays(_weekNavOffset);
@@ -437,28 +443,22 @@ function renderTrend(data) {
       </div>`;
 
       const wkTotals = wdays.map(d => data.filter(r => r.date === d.date).reduce((s, r) => s + r.qty, 0));
+      const weekGrandTotal = wkTotals.reduce((s, v) => s + v, 0);
       const monthTotal = currentMonthData(data).reduce((s, r) => s + r.qty, 0);
       totEl.textContent = 'Bu oy: ' + monthTotal; totEl.style.display = 'block';
 
-      const datasets = top5.map((k, i) => ({
+      const datasets = allKeys.map((k, i) => ({
         label: k,
         data: wdays.map(d => data.filter(r => r.date === d.date && r[field] === k).reduce((s, r) => s + r.qty, 0)),
-        borderColor: LINE_COLORS[i], backgroundColor: LINE_COLORS[i] + '22',
-        borderWidth: 2, pointBackgroundColor: LINE_COLORS[i], pointRadius: 4, fill: false, tension: .4
+        borderColor: clr(i), backgroundColor: clr(i) + '22',
+        borderWidth: 2, pointBackgroundColor: clr(i), pointRadius: 4, fill: false, tension: .4
       }));
-      // Legend must show full-month totals per series, not just the visible week slice
-      const mthDataLgd     = currentMonthData(displayData);
-      const legendVals     = top5.map(k => mthDataLgd.filter(r => r[field] === k).reduce((s, r) => s + r.qty, 0));
-      const topSumH        = legendVals.reduce((s, v) => s + v, 0);
-      const filteredTotalH = mthDataLgd.reduce((s, r) => s + r.qty, 0);
-      const boshqaH        = filteredTotalH - topSumH;
+      const legendVals = datasets.map(ds => ds.data.reduce((s, v) => s + v, 0));
       lstEl.style.display = 'block';
       lstEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px 10px;padding:6px 2px 2px">' +
-        top5.map((k, i) => { const v = legendVals[i], pct = monthTotal > 0 ? ((v / monthTotal) * 100).toFixed(1) : '0.0';
-          return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:${LINE_COLORS[i]};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
-        }).join('') +
-        (boshqaH > 0 ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:#666;flex-shrink:0"></span>Boshqalar — ${boshqaH} ta (${monthTotal > 0 ? ((boshqaH/monthTotal)*100).toFixed(1) : '0.0'}%)</span>` : '') +
-        '</div>';
+        allKeys.map((k, i) => { const v = legendVals[i], pct = weekGrandTotal > 0 ? ((v / weekGrandTotal) * 100).toFixed(1) : '0.0';
+          return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:${clr(i)};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
+        }).join('') + '</div>';
       destroyC('trend');
       charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
         type: 'line',
@@ -491,23 +491,18 @@ function renderTrend(data) {
       const wkTotals   = weeks.map(w => weeklyTotal(data, w.start, w.end));
       const monthTotal = currentMonthData(data).reduce((s, r) => s + r.qty, 0);
       totEl.textContent = 'Bu oy: ' + monthTotal; totEl.style.display = 'block';
-      const datasets = top5.map((k, i) => ({
+      const datasets = allKeys.map((k, i) => ({
         label: k,
         data: weeks.map(w => data.filter(r => r.date >= w.start && r.date <= w.end && r[field] === k).reduce((s, r) => s + r.qty, 0)),
-        borderColor: LINE_COLORS[i], backgroundColor: LINE_COLORS[i] + '22',
-        borderWidth: 2, pointBackgroundColor: LINE_COLORS[i], pointRadius: 4, fill: false, tension: .4
+        borderColor: clr(i), backgroundColor: clr(i) + '22',
+        borderWidth: 2, pointBackgroundColor: clr(i), pointRadius: 4, fill: false, tension: .4
       }));
-      const legendVals     = datasets.map(ds => ds.data.reduce((s, v) => s + v, 0));
-      const topSumO        = legendVals.reduce((s, v) => s + v, 0);
-      const filteredTotalO = currentMonthData(displayData).reduce((s, r) => s + r.qty, 0);
-      const boshqaO        = filteredTotalO - topSumO;
+      const legendVals = datasets.map(ds => ds.data.reduce((s, v) => s + v, 0));
       lstEl.style.display = 'block';
       lstEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px 10px;padding:6px 2px 2px">' +
-        top5.map((k, i) => { const v = legendVals[i], pct = monthTotal > 0 ? ((v / monthTotal) * 100).toFixed(1) : '0.0';
-          return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:${LINE_COLORS[i]};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
-        }).join('') +
-        (boshqaO > 0 ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:#666;flex-shrink:0"></span>Boshqalar — ${boshqaO} ta (${monthTotal > 0 ? ((boshqaO/monthTotal)*100).toFixed(1) : '0.0'}%)</span>` : '') +
-        '</div>';
+        allKeys.map((k, i) => { const v = legendVals[i], pct = monthTotal > 0 ? ((v / monthTotal) * 100).toFixed(1) : '0.0';
+          return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:${clr(i)};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
+        }).join('') + '</div>';
       destroyC('trend');
       charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
         type: 'line',

@@ -73,6 +73,33 @@ async function remove(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function categoryModels(req, res, next) {
+  try {
+    const { category, month } = req.query;
+    if (!category || !month) {
+      return res.status(400).json({ error: 'category va month parametrlari kerak' });
+    }
+    const totRes = await db.query(
+      `SELECT COALESCE(SUM(qty),0)::int AS total FROM entries WHERE TO_CHAR(date,'YYYY-MM')=$1`,
+      [month]
+    );
+    const month_total = totRes.rows[0].total;
+    const { rows } = await db.query(
+      `SELECT sku AS model, SUM(qty)::int AS count FROM entries WHERE sku ILIKE $1 AND TO_CHAR(date,'YYYY-MM')=$2 GROUP BY sku ORDER BY count DESC`,
+      [category + '%', month]
+    );
+    res.json({
+      category,
+      month_total,
+      models: rows.map(r => ({
+        model: r.model,
+        count: r.count,
+        percentage: month_total > 0 ? parseFloat((r.count / month_total * 100).toFixed(1)) : 0
+      }))
+    });
+  } catch (err) { next(err); }
+}
+
 async function modelCauses(req, res, next) {
   try {
     const { model, month } = req.query;
@@ -100,4 +127,4 @@ async function modelCauses(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, create, remove, modelCauses };
+module.exports = { list, create, remove, modelCauses, categoryModels };

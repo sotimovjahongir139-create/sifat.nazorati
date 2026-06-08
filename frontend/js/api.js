@@ -70,6 +70,10 @@ async function apiGetModelCauses(model, month) {
   return apiFetch('/defects/model-causes?model=' + encodeURIComponent(model) + '&month=' + encodeURIComponent(month));
 }
 
+async function apiGetCategoryModels(category, month) {
+  return apiFetch('/defects/category-models?category=' + encodeURIComponent(category) + '&month=' + encodeURIComponent(month));
+}
+
 // ── ANALYTICS ───────────────────────────────────────────────
 async function apiGetDashboard() {
   return apiFetch('/stats/dashboard');
