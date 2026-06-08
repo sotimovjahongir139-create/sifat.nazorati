@@ -73,4 +73,31 @@ async function remove(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, create, remove };
+async function modelCauses(req, res, next) {
+  try {
+    const { model, month } = req.query;
+    if (!model || !month) {
+      return res.status(400).json({ error: 'model va month parametrlari kerak' });
+    }
+    const totRes = await db.query(
+      `SELECT COALESCE(SUM(qty),0) AS total FROM entries WHERE sku=$1 AND TO_CHAR(date,'YYYY-MM')=$2`,
+      [model, month]
+    );
+    const total = parseInt(totRes.rows[0].total);
+    const { rows } = await db.query(
+      `SELECT reason AS cause, SUM(qty)::int AS count FROM entries WHERE sku=$1 AND TO_CHAR(date,'YYYY-MM')=$2 GROUP BY reason ORDER BY count DESC`,
+      [model, month]
+    );
+    res.json({
+      model,
+      total,
+      causes: rows.map(r => ({
+        cause: r.cause,
+        count: r.count,
+        percentage: total > 0 ? parseFloat((r.count / total * 100).toFixed(1)) : 0
+      }))
+    });
+  } catch (err) { next(err); }
+}
+
+module.exports = { list, create, remove, modelCauses };

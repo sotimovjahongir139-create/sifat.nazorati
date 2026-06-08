@@ -206,6 +206,7 @@ function navWeek(delta) {
 
 function setTrendMode(m) {
   _trendMode = m;
+  _weekNavOffset = 0;
   ['tendensiya','haftalik','oylik','model','sabab'].forEach(k => {
     const b = document.getElementById('ttab-' + k);
     if (b) b.classList.toggle('active', k === m);
@@ -446,16 +447,17 @@ function renderTrend(data) {
         borderWidth: 2, pointBackgroundColor: LINE_COLORS[i], pointRadius: 4, fill: false, tension: .4
       }));
       // Legend must show full-month totals per series, not just the visible week slice
-      const mthDataLgd = currentMonthData(displayData);
-      const legendVals = top5.map(k => mthDataLgd.filter(r => r[field] === k).reduce((s, r) => s + r.qty, 0));
-      const topSumH    = legendVals.reduce((s, v) => s + v, 0);
-      const boshqaH    = _skuFilter ? 0 : monthTotal - topSumH;
+      const mthDataLgd     = currentMonthData(displayData);
+      const legendVals     = top5.map(k => mthDataLgd.filter(r => r[field] === k).reduce((s, r) => s + r.qty, 0));
+      const topSumH        = legendVals.reduce((s, v) => s + v, 0);
+      const filteredTotalH = mthDataLgd.reduce((s, r) => s + r.qty, 0);
+      const boshqaH        = filteredTotalH - topSumH;
       lstEl.style.display = 'block';
       lstEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px 10px;padding:6px 2px 2px">' +
-        top5.map((k, i) => { const v = legendVals[i], pct = monthTotal > 0 ? ((v / monthTotal) * 100).toFixed(0) : '0';
+        top5.map((k, i) => { const v = legendVals[i], pct = monthTotal > 0 ? ((v / monthTotal) * 100).toFixed(1) : '0.0';
           return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:${LINE_COLORS[i]};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
         }).join('') +
-        (boshqaH > 0 ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:#666;flex-shrink:0"></span>Boshqalar — ${boshqaH} ta (${monthTotal > 0 ? ((boshqaH/monthTotal)*100).toFixed(0) : '0'}%)</span>` : '') +
+        (boshqaH > 0 ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:#666;flex-shrink:0"></span>Boshqalar — ${boshqaH} ta (${monthTotal > 0 ? ((boshqaH/monthTotal)*100).toFixed(1) : '0.0'}%)</span>` : '') +
         '</div>';
       destroyC('trend');
       charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
@@ -495,15 +497,16 @@ function renderTrend(data) {
         borderColor: LINE_COLORS[i], backgroundColor: LINE_COLORS[i] + '22',
         borderWidth: 2, pointBackgroundColor: LINE_COLORS[i], pointRadius: 4, fill: false, tension: .4
       }));
-      const legendVals = datasets.map(ds => ds.data.reduce((s, v) => s + v, 0));
-      const topSumO    = legendVals.reduce((s, v) => s + v, 0);
-      const boshqaO    = _skuFilter ? 0 : monthTotal - topSumO;
+      const legendVals     = datasets.map(ds => ds.data.reduce((s, v) => s + v, 0));
+      const topSumO        = legendVals.reduce((s, v) => s + v, 0);
+      const filteredTotalO = currentMonthData(displayData).reduce((s, r) => s + r.qty, 0);
+      const boshqaO        = filteredTotalO - topSumO;
       lstEl.style.display = 'block';
       lstEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px 10px;padding:6px 2px 2px">' +
-        top5.map((k, i) => { const v = legendVals[i], pct = monthTotal > 0 ? ((v / monthTotal) * 100).toFixed(0) : '0';
+        top5.map((k, i) => { const v = legendVals[i], pct = monthTotal > 0 ? ((v / monthTotal) * 100).toFixed(1) : '0.0';
           return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:${LINE_COLORS[i]};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
         }).join('') +
-        (boshqaO > 0 ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:#666;flex-shrink:0"></span>Boshqalar — ${boshqaO} ta (${monthTotal > 0 ? ((boshqaO/monthTotal)*100).toFixed(0) : '0'}%)</span>` : '') +
+        (boshqaO > 0 ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:#666;flex-shrink:0"></span>Boshqalar — ${boshqaO} ta (${monthTotal > 0 ? ((boshqaO/monthTotal)*100).toFixed(1) : '0.0'}%)</span>` : '') +
         '</div>';
       destroyC('trend');
       charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {

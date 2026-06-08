@@ -420,13 +420,62 @@ function renderAnalytics() {
   const now2 = new Date();
   const aMData = data.filter(r => { const d = new Date(r.date + 'T00:00:00'); return d.getFullYear() === now2.getFullYear() && d.getMonth() === now2.getMonth(); });
   const aMTotal = aMData.reduce((s, r) => s + r.qty, 0);
-  renderRankList('aSkuRank', topNmodels(aMData, 10),
+  const aTopModels = topNmodels(aMData, 10);
+
+  document.getElementById('aSkuRankTitle').textContent = 'Top 10 model reytingi';
+  document.getElementById('aSkuRankSub').textContent   = "Jami nuqsonlar bo'yicha";
+  document.getElementById('aSkuRankBack').style.display = 'none';
+  renderRankList('aSkuRank', aTopModels,
     ['#ffd43b','#aaa','#ff6b35',...Array(7).fill('#6666aa')],
     ['rgba(255,212,59,.5)','rgba(170,170,170,.35)','rgba(255,107,53,.45)',...Array(7).fill('rgba(100,100,170,.3)')],
     null, aMTotal);
+  [...document.getElementById('aSkuRank').querySelectorAll('.rit')].forEach((li, i) => {
+    if (aTopModels[i]) { li.style.cursor = 'pointer'; li.onclick = () => analyticsModelDrilldown(aTopModels[i].name); }
+  });
+
   const aReasonItems = REASONS.map(r => ({ name: r, total: reasonTotal(aMData, r) })).sort((a, b) => b.total - a.total);
   const aTotalCauses = aReasonItems.reduce((s, it) => s + it.total, 0);
   renderRankList('aReasonRank', aReasonItems, rColors, rColors.map(c => c + '66'), null, aTotalCauses);
+}
+
+async function analyticsModelDrilldown(modelName) {
+  const now   = new Date();
+  const month = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  document.getElementById('aSkuRankTitle').textContent  = modelName + ' — sabablari';
+  document.getElementById('aSkuRankSub').textContent    = 'Nuqson sabablari boʼyicha';
+  document.getElementById('aSkuRankBack').style.display = '';
+  document.getElementById('aSkuRank').innerHTML = '<li class="rit" style="justify-content:center;padding:20px"><i class="fas fa-spinner fa-spin" style="color:var(--blue)"></i></li>';
+  try {
+    const result  = await apiGetModelCauses(modelName, month);
+    const rColors = ['#ff4757','#ffd43b','#ff6b35','#4f8ef7','#2ed573','#9c6af8','#2ec4b6','#ff9f43','#55efc4'];
+    if (!result.causes || !result.causes.length) {
+      document.getElementById('aSkuRank').innerHTML = `<li class="rit"><span style="opacity:.6">Ma'lumot topilmadi</span></li>`;
+      return;
+    }
+    renderRankList('aSkuRank',
+      result.causes.map(c => ({ name: c.cause, total: c.count })),
+      rColors, rColors.map(c => c + '66'), null, result.total);
+  } catch (e) {
+    document.getElementById('aSkuRank').innerHTML = `<li class="rit"><span style="color:var(--red)">Xatolik: ${e.message}</span></li>`;
+  }
+}
+
+function analyticsModelBack() {
+  document.getElementById('aSkuRankTitle').textContent  = 'Top 10 model reytingi';
+  document.getElementById('aSkuRankSub').textContent    = "Jami nuqsonlar bo'yicha";
+  document.getElementById('aSkuRankBack').style.display = 'none';
+  const d       = getData();
+  const now2    = new Date();
+  const aMData2 = d.filter(r => { const dt = new Date(r.date + 'T00:00:00'); return dt.getFullYear() === now2.getFullYear() && dt.getMonth() === now2.getMonth(); });
+  const aMTotal2   = aMData2.reduce((s, r) => s + r.qty, 0);
+  const aTopModels = topNmodels(aMData2, 10);
+  renderRankList('aSkuRank', aTopModels,
+    ['#ffd43b','#aaa','#ff6b35',...Array(7).fill('#6666aa')],
+    ['rgba(255,212,59,.5)','rgba(170,170,170,.35)','rgba(255,107,53,.45)',...Array(7).fill('rgba(100,100,170,.3)')],
+    null, aMTotal2);
+  [...document.getElementById('aSkuRank').querySelectorAll('.rit')].forEach((li, i) => {
+    if (aTopModels[i]) { li.style.cursor = 'pointer'; li.onclick = () => analyticsModelDrilldown(aTopModels[i].name); }
+  });
 }
 
 // ── CATEGORY PAGES ───────────────────────────────────────────

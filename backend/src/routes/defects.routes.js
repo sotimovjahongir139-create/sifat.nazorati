@@ -1,8 +1,9 @@
 const router      = require('express').Router();
 const requireAuth = require('../middleware/auth.middleware');
-const { list, create, remove } = require('../controllers/defects.controller');
+const { list, create, remove, modelCauses } = require('../controllers/defects.controller');
 
 router.use(requireAuth);
+router.get('/model-causes', modelCauses);
 router.get('/',    list);
 router.post('/',   create);
 router.delete('/:id', remove);
