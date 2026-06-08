@@ -191,7 +191,47 @@ const LINE_COLORS = ['#4f8ef7','#2ed573','#ff6b35','#ffd43b','#9c6af8'];
 let _trendMode    = 'tendensiya';
 let _msSubMode    = 'haftalik';
 let _weekNavOffset = 0;
-let _skuFilter    = null;
+let _skuFilter      = null;
+let _trendActiveIdx = null;
+
+const _datalabelPlugin = {
+  id: 'trendDatalabels',
+  afterDatasetsDraw(chart) {
+    if (_trendActiveIdx === null) return;
+    const meta = chart.getDatasetMeta(_trendActiveIdx);
+    if (!meta || !meta.visible) return;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.font = 'bold 11px system-ui,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    meta.data.forEach((pt, i) => {
+      const v = chart.data.datasets[_trendActiveIdx]?.data[i];
+      if (v === null || v === undefined || v === 0) return;
+      ctx.fillStyle = 'rgba(255,255,255,.92)';
+      ctx.fillText(v, pt.x, pt.y - 6);
+    });
+    ctx.restore();
+  }
+};
+
+function _wireLegendClicks(lstEl, ch) {
+  lstEl.querySelectorAll('span[data-li]').forEach((span, idx) => {
+    span.onclick = () => {
+      const i = parseInt(span.dataset.li);
+      if (_trendActiveIdx === i) {
+        _trendActiveIdx = null;
+        ch.data.datasets.forEach((_, di) => ch.setDatasetVisibility(di, true));
+        lstEl.querySelectorAll('span[data-li]').forEach(s => { s.style.opacity = '1'; });
+      } else {
+        _trendActiveIdx = i;
+        ch.data.datasets.forEach((_, di) => ch.setDatasetVisibility(di, di === i));
+        lstEl.querySelectorAll('span[data-li]').forEach((s, si) => { s.style.opacity = si === i ? '1' : '0.3'; });
+      }
+      ch.update();
+    };
+  });
+}
 
 function getOffsetWeekDays(offset) {
   const now = new Date(), dow = now.getDay();
@@ -413,6 +453,7 @@ function renderTrend(data) {
   // ── Model / Sabab multi-line ──
   } else {
     destroyC('trend'); destroyC('trendM'); destroyC('trendS');
+    _trendActiveIdx = null;
     boxEl.style.display = 'block'; pctEl.style.display = 'none'; pctEl.innerHTML = '';
     const field      = _trendMode === 'model' ? 'sku' : 'reason';
     const displayData = (_trendMode === 'model' && _skuFilter)
@@ -457,7 +498,7 @@ function renderTrend(data) {
       lstEl.style.display = 'block';
       lstEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px 10px;padding:6px 2px 2px">' +
         allKeys.map((k, i) => { const v = legendVals[i], pct = weekGrandTotal > 0 ? ((v / weekGrandTotal) * 100).toFixed(1) : '0.0';
-          return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:${clr(i)};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
+          return `<span data-li="${i}" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap;cursor:pointer"><span style="width:8px;height:8px;border-radius:2px;background:${clr(i)};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
         }).join('') + '</div>';
       destroyC('trend');
       charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
@@ -475,8 +516,10 @@ function renderTrend(data) {
             }}}
           },
           scales: baseScales()
-        }
+        },
+        plugins: [_datalabelPlugin]
       });
+      _wireLegendClicks(lstEl, charts.trend);
 
     } else {
       const now = new Date();
@@ -501,7 +544,7 @@ function renderTrend(data) {
       lstEl.style.display = 'block';
       lstEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px 10px;padding:6px 2px 2px">' +
         allKeys.map((k, i) => { const v = legendVals[i], pct = monthTotal > 0 ? ((v / monthTotal) * 100).toFixed(1) : '0.0';
-          return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:${clr(i)};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
+          return `<span data-li="${i}" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap;cursor:pointer"><span style="width:8px;height:8px;border-radius:2px;background:${clr(i)};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
         }).join('') + '</div>';
       destroyC('trend');
       charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
@@ -519,8 +562,10 @@ function renderTrend(data) {
             }}}
           },
           scales: baseScales()
-        }
+        },
+        plugins: [_datalabelPlugin]
       });
+      _wireLegendClicks(lstEl, charts.trend);
     }
   }
 }
