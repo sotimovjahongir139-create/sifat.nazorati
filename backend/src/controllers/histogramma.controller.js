@@ -34,7 +34,7 @@ async function list(req, res, next) {
 
 async function create(req, res, next) {
   try {
-    const { date, material_type, model, gram = '', qty } = req.body;
+    const { date, material_type, model, gram = '', qty, gramm } = req.body;
     if (!date || !material_type || !model || !qty) {
       return res.status(400).json({ error: "Barcha majburiy maydonlarni to'ldiring" });
     }
@@ -45,12 +45,13 @@ async function create(req, res, next) {
     if (isNaN(qtyInt) || qtyInt < 1) {
       return res.status(400).json({ error: "Miqdor 1 dan katta bo'lishi kerak" });
     }
+    const grammInt = (gramm !== undefined && gramm !== null && gramm !== '') ? parseInt(gramm) : null;
 
     const { rows } = await db.query(
-      `INSERT INTO quality_records (date, material_type, model, gram, qty, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6)
-       RETURNING id, TO_CHAR(date,'YYYY-MM-DD') AS date, material_type, model, gram, qty, created_at`,
-      [date, material_type, model.trim(), String(gram).trim(), qtyInt, req.user.id]
+      `INSERT INTO quality_records (date, material_type, model, gram, qty, gramm, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       RETURNING id, TO_CHAR(date,'YYYY-MM-DD') AS date, material_type, model, gram, qty, gramm, created_at`,
+      [date, material_type, model.trim(), String(gram).trim(), qtyInt, grammInt, req.user.id]
     );
     res.status(201).json(rows[0]);
   } catch (err) { next(err); }

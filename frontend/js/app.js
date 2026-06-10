@@ -844,20 +844,29 @@ function renderHistModelList(q) {
 function selectHistModelFromList(model) {
   document.getElementById('hModel').value = model;
   renderHistModelList(model);
-  const canWrite = _isHistAdmin2() || _isHistAdmin();
-  if (canWrite && _histMat) {
-    const gramWrap = document.getElementById('hGramWrap');
-    if (gramWrap) gramWrap.style.display = 'block';
-    _renderGramSelect(_histMat, model);
-    document.getElementById('hGram').value = '';
-    const addGramBtn = document.getElementById('hGramAddBtn');
-    if (addGramBtn) addGramBtn.style.display = _isHistAdmin2() ? '' : 'none';
-    const gramAddRow = document.getElementById('hGramAddRow');
-    if (gramAddRow) gramAddRow.style.display = 'none';
+  if (_isHistAdmin2() && _histMat) {
+    document.getElementById('hGrammInputWrap').style.display = 'block';
+    document.getElementById('hGrammInput').value = '';
+    document.getElementById('hGramWrap').style.display = 'none';
+    document.getElementById('hMiqdorWrap').style.display = 'none';
+    const saveBtn = document.getElementById('histSaveBtn');
+    if (saveBtn) saveBtn.style.display = 'none';
+  } else {
+    const canWrite = _isHistAdmin();
+    if (canWrite && _histMat) {
+      const gramWrap = document.getElementById('hGramWrap');
+      if (gramWrap) gramWrap.style.display = 'block';
+      _renderGramSelect(_histMat, model);
+      document.getElementById('hGram').value = '';
+      const addGramBtn = document.getElementById('hGramAddBtn');
+      if (addGramBtn) addGramBtn.style.display = 'none';
+      const gramAddRow = document.getElementById('hGramAddRow');
+      if (gramAddRow) gramAddRow.style.display = 'none';
+    }
+    document.getElementById('hMiqdorWrap').style.display = 'none';
+    const saveBtn = document.getElementById('histSaveBtn');
+    if (saveBtn) saveBtn.style.display = 'none';
   }
-  document.getElementById('hMiqdorWrap').style.display = 'none';
-  const saveBtn = document.getElementById('histSaveBtn');
-  if (saveBtn) saveBtn.style.display = 'none';
 }
 
 function setupHistogramma() {
@@ -865,6 +874,10 @@ function setupHistogramma() {
   document.getElementById('hModelWrap').style.display  = 'none';
   document.getElementById('hGramWrap').style.display   = 'none';
   document.getElementById('hMiqdorWrap').style.display = 'none';
+  const hGrammInputWrap = document.getElementById('hGrammInputWrap');
+  if (hGrammInputWrap) hGrammInputWrap.style.display = 'none';
+  const hGrammInput = document.getElementById('hGrammInput');
+  if (hGrammInput) hGrammInput.value = '';
   const gramAddRow = document.getElementById('hGramAddRow');
   if (gramAddRow) gramAddRow.style.display = 'none';
   const saveBtn = document.getElementById('histSaveBtn');
@@ -891,6 +904,10 @@ function selectHistMat(mat) {
   document.getElementById('hModelWrap').style.display  = 'block';
   document.getElementById('hGramWrap').style.display   = 'none';
   document.getElementById('hMiqdorWrap').style.display = 'none';
+  const hGrammInputWrap = document.getElementById('hGrammInputWrap');
+  if (hGrammInputWrap) hGrammInputWrap.style.display = 'none';
+  const hGrammInput = document.getElementById('hGrammInput');
+  if (hGrammInput) hGrammInput.value = '';
   const gramAddRow = document.getElementById('hGramAddRow');
   if (gramAddRow) gramAddRow.style.display = 'none';
   const saveBtn = document.getElementById('histSaveBtn');
@@ -938,6 +955,41 @@ async function saveHistogramma() {
     document.getElementById('hMiqdorWrap').style.display = 'none';
     const saveBtn = document.getElementById('histSaveBtn');
     if (saveBtn) saveBtn.style.display = 'none';
+  } catch (err) {
+    toast(err.message || 'Saqlashda xatolik', 'e');
+  }
+}
+
+async function saveHistGramm() {
+  if (!_isHistAdmin2()) return;
+  const date          = document.getElementById('hDate').value;
+  const material_type = _histMat;
+  const model         = document.getElementById('hModel').value.trim();
+  const grammVal      = document.getElementById('hGrammInput').value;
+  const gramm         = parseInt(grammVal);
+
+  if (!date || !material_type || !model) {
+    toast("Barcha maydonlarni to'ldiring.", 'e');
+    return;
+  }
+  if (!grammVal || isNaN(gramm) || gramm <= 0) {
+    toast("Gramm qiymatini to'g'ri kiriting (0 dan katta bo'lishi kerak).", 'e');
+    return;
+  }
+
+  try {
+    await apiPostHistogramma({ date, material_type, model, gramm, qty: 1 });
+    _saveHistCustomModel(material_type, model);
+    toast('Saqlandi!', 's');
+    const succEl = document.getElementById('histSuccMsg');
+    succEl.style.display = 'flex';
+    setTimeout(() => { succEl.style.display = 'none'; }, 2000);
+    _histData = await apiGetHistogramma() || [];
+    _renderHistCharts();
+    document.getElementById('hGrammInput').value = '';
+    document.getElementById('hGrammInputWrap').style.display = 'none';
+    document.getElementById('hModel').value = '';
+    renderHistModelList('');
   } catch (err) {
     toast(err.message || 'Saqlashda xatolik', 'e');
   }

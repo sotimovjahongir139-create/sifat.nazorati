@@ -309,6 +309,13 @@
             <div class="hist-model-list" id="hModelListBox"></div>
             <button type="button" class="reason-add-btn" id="hModelAddBtn" onclick="addHistCustomModel()" style="margin-top:8px"><i class="fas fa-plus"></i> Yangi model qo'shish</button>
           </div>
+          <div id="hGrammInputWrap" style="display:none">
+            <label class="flbl">GRAMM</label>
+            <input type="number" class="fi" id="hGrammInput" min="1" placeholder="Gramm miqdorini kiriting...">
+            <div style="margin-top:12px">
+              <button class="btn-save" onclick="saveHistGramm()"><i class="fas fa-save"></i> Saqlash</button>
+            </div>
+          </div>
           <div id="hGramWrap" style="display:none">
             <label class="flbl">Gramm</label>
             <select class="fi" id="hGram" onchange="onHistGramChange()">

@@ -69,6 +69,7 @@ async function runMigrations() {
   await db.query(`CREATE INDEX IF NOT EXISTS idx_entries_category   ON entries(category)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_entries_created_by ON entries(created_by)`);
   await db.query(`ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS qty INTEGER NOT NULL DEFAULT 1`);
+  await db.query(`ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS gramm INTEGER DEFAULT NULL`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_qr_material        ON quality_records(material_type)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_qr_date            ON quality_records(date)`);
 
