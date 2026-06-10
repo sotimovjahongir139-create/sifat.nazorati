@@ -71,6 +71,18 @@ async function runMigrations() {
   await db.query(`ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS qty INTEGER NOT NULL DEFAULT 1`);
   await db.query(`ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS gramm INTEGER DEFAULT NULL`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_qr_material        ON quality_records(material_type)`);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS model_grams (
+      id            SERIAL PRIMARY KEY,
+      material_type VARCHAR(10)  NOT NULL,
+      model         VARCHAR(200) NOT NULL,
+      gramm         INTEGER      NOT NULL CHECK (gramm > 0),
+      created_at    TIMESTAMPTZ  DEFAULT NOW(),
+      UNIQUE(material_type, model, gramm)
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_mg_model ON model_grams(material_type, model)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_qr_date            ON quality_records(date)`);
 
   for (const u of SEED_USERS) {

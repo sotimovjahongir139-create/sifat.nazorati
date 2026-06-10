@@ -46,14 +46,71 @@ async function create(req, res, next) {
       return res.status(400).json({ error: "Miqdor 1 dan katta bo'lishi kerak" });
     }
     const grammInt = (gramm !== undefined && gramm !== null && gramm !== '') ? parseInt(gramm) : null;
+    const effectiveGramm = grammInt !== null ? grammInt
+      : (gram && !isNaN(parseInt(gram)) ? parseInt(gram) : null);
+
+    if (req.user.username !== 'admin2' && effectiveGramm !== null) {
+      const { rows: gramRows } = await db.query(
+        `SELECT 1 FROM model_grams WHERE material_type=$1 AND model=$2 AND gramm=$3`,
+        [material_type, model.trim(), effectiveGramm]
+      );
+      if (!gramRows.length) {
+        return res.status(400).json({ error: "Bu gramm qiymati modelga tegishli emas" });
+      }
+    }
+
+    if (req.user.username === 'admin2' && effectiveGramm !== null) {
+      await db.query(
+        `INSERT INTO model_grams (material_type, model, gramm) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+        [material_type, model.trim(), effectiveGramm]
+      );
+    }
 
     const { rows } = await db.query(
       `INSERT INTO quality_records (date, material_type, model, gram, qty, gramm, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7)
        RETURNING id, TO_CHAR(date,'YYYY-MM-DD') AS date, material_type, model, gram, qty, gramm, created_at`,
-      [date, material_type, model.trim(), String(gram).trim(), qtyInt, grammInt, req.user.id]
+      [date, material_type, model.trim(), String(gram).trim(), qtyInt, effectiveGramm, req.user.id]
     );
     res.status(201).json(rows[0]);
+  } catch (err) { next(err); }
+}
+
+async function listGrams(req, res, next) {
+  try {
+    const { material_type, model } = req.query;
+    if (!material_type || !model) {
+      return res.status(400).json({ error: 'material_type va model kerak' });
+    }
+    const { rows } = await db.query(
+      `SELECT gramm FROM model_grams WHERE material_type=$1 AND model=$2 ORDER BY gramm ASC`,
+      [material_type, model.trim()]
+    );
+    res.json(rows.map(r => r.gramm));
+  } catch (err) { next(err); }
+}
+
+async function addGram(req, res, next) {
+  try {
+    if (req.user.username !== 'admin2') {
+      return res.status(403).json({ error: "Ruxsat yo'q" });
+    }
+    const { material_type, model, gramm } = req.body;
+    if (!material_type || !model || gramm === undefined) {
+      return res.status(400).json({ error: 'Barcha maydonlar kerak' });
+    }
+    if (!VALID_MATERIALS.includes(material_type)) {
+      return res.status(400).json({ error: "Noto'g'ri material turi" });
+    }
+    const grammInt = parseInt(gramm);
+    if (isNaN(grammInt) || grammInt <= 0) {
+      return res.status(400).json({ error: "Gramm 0 dan katta bo'lishi kerak" });
+    }
+    await db.query(
+      `INSERT INTO model_grams (material_type, model, gramm) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+      [material_type, model.trim(), grammInt]
+    );
+    res.status(201).json({ ok: true });
   } catch (err) { next(err); }
 }
 
@@ -84,4 +141,4 @@ async function deleteAll(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, create, deleteByModel, deleteAll };
+module.exports = { list, create, deleteByModel, deleteAll, listGrams, addGram };

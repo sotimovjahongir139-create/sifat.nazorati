@@ -115,6 +115,15 @@ async function apiDeleteHistogrammaModel(material_type, model) {
   return apiFetch('/histogramma/model?' + q, { method: 'DELETE' });
 }
 
+async function apiGetModelGrams(material_type, model) {
+  const q = new URLSearchParams({ material_type, model }).toString();
+  return apiFetch('/histogramma/grams?' + q);
+}
+
+async function apiPostModelGram(material_type, model, gramm) {
+  return apiFetch('/histogramma/grams', { method: 'POST', body: { material_type, model, gramm } });
+}
+
 // ── USERS (admin only) ──────────────────────────────────────
 async function apiGetUsers() {
   return apiFetch('/users');

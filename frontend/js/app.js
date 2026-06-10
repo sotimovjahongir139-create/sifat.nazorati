@@ -738,8 +738,9 @@ async function removeUser(id, username) {
 
 // ── HISTOGRAMMA MODULE ───────────────────────────────────────
 let _histData    = [];
-let _histMat     = null;
-let _histPUMode  = 'oylik';
+let _histMat        = null;
+let _histGrammCache = {};
+let _histPUMode     = 'oylik';
 let _histTEPMode = 'oylik';
 let _histPUModel  = '';
 let _histTEPModel = '';
@@ -847,21 +848,23 @@ function selectHistModelFromList(model) {
   if (_isHistAdmin2() && _histMat) {
     document.getElementById('hGrammInputWrap').style.display = 'block';
     document.getElementById('hGrammInput').value = '';
+    const suggList = document.getElementById('hGrammSuggList');
+    if (suggList) suggList.innerHTML = '';
     document.getElementById('hGramWrap').style.display = 'none';
     document.getElementById('hMiqdorWrap').style.display = 'none';
     const saveBtn = document.getElementById('histSaveBtn');
     if (saveBtn) saveBtn.style.display = 'none';
+    fetchAndShowGrams(_histMat, model);
   } else {
     const canWrite = _isHistAdmin();
     if (canWrite && _histMat) {
       const gramWrap = document.getElementById('hGramWrap');
       if (gramWrap) gramWrap.style.display = 'block';
-      _renderGramSelect(_histMat, model);
-      document.getElementById('hGram').value = '';
-      const addGramBtn = document.getElementById('hGramAddBtn');
-      if (addGramBtn) addGramBtn.style.display = 'none';
-      const gramAddRow = document.getElementById('hGramAddRow');
-      if (gramAddRow) gramAddRow.style.display = 'none';
+      const hGram = document.getElementById('hGram');
+      if (hGram) hGram.value = '';
+      const selectList = document.getElementById('hGrammSelectList');
+      if (selectList) selectList.innerHTML = '<div style="padding:10px 13px;color:var(--muted);font-size:13px">Yuklanmoqda...</div>';
+      fetchAndShowGrams(_histMat, model);
     }
     document.getElementById('hMiqdorWrap').style.display = 'none';
     const saveBtn = document.getElementById('histSaveBtn');
@@ -878,14 +881,14 @@ function setupHistogramma() {
   if (hGrammInputWrap) hGrammInputWrap.style.display = 'none';
   const hGrammInput = document.getElementById('hGrammInput');
   if (hGrammInput) hGrammInput.value = '';
-  const gramAddRow = document.getElementById('hGramAddRow');
-  if (gramAddRow) gramAddRow.style.display = 'none';
+  const hGrammSuggList = document.getElementById('hGrammSuggList');
+  if (hGrammSuggList) hGrammSuggList.innerHTML = '';
   const saveBtn = document.getElementById('histSaveBtn');
   if (saveBtn) saveBtn.style.display = 'none';
   document.getElementById('hModel').value  = '';
   document.getElementById('hMiqdor').value = '';
   const hGram = document.getElementById('hGram');
-  if (hGram) hGram.innerHTML = '<option value="">— Grammni tanlang —</option>';
+  if (hGram) hGram.value = '';
   document.getElementById('histSuccMsg').style.display = 'none';
   document.querySelectorAll('.hist-mat-btn').forEach(b => b.classList.remove('active'));
   _histMat = null;
@@ -900,7 +903,7 @@ function selectHistMat(mat) {
   document.getElementById('hModel').value  = '';
   document.getElementById('hMiqdor').value = '';
   const hGram = document.getElementById('hGram');
-  if (hGram) hGram.innerHTML = '<option value="">— Grammni tanlang —</option>';
+  if (hGram) hGram.value = '';
   document.getElementById('hModelWrap').style.display  = 'block';
   document.getElementById('hGramWrap').style.display   = 'none';
   document.getElementById('hMiqdorWrap').style.display = 'none';
@@ -908,8 +911,8 @@ function selectHistMat(mat) {
   if (hGrammInputWrap) hGrammInputWrap.style.display = 'none';
   const hGrammInput = document.getElementById('hGrammInput');
   if (hGrammInput) hGrammInput.value = '';
-  const gramAddRow = document.getElementById('hGramAddRow');
-  if (gramAddRow) gramAddRow.style.display = 'none';
+  const hSuggL = document.getElementById('hGrammSuggList');
+  if (hSuggL) hSuggL.innerHTML = '';
   const saveBtn = document.getElementById('histSaveBtn');
   if (saveBtn) saveBtn.style.display = 'none';
   renderHistModelList('');
@@ -986,13 +989,73 @@ async function saveHistGramm() {
     setTimeout(() => { succEl.style.display = 'none'; }, 2000);
     _histData = await apiGetHistogramma() || [];
     _renderHistCharts();
+    const _ck = material_type + '|' + model;
+    if (!(_histGrammCache[_ck] || []).includes(gramm)) {
+      _histGrammCache[_ck] = [...(_histGrammCache[_ck] || []), gramm].sort((a, b) => a - b);
+    }
     document.getElementById('hGrammInput').value = '';
+    const _sl = document.getElementById('hGrammSuggList');
+    if (_sl) _sl.innerHTML = '';
     document.getElementById('hGrammInputWrap').style.display = 'none';
     document.getElementById('hModel').value = '';
     renderHistModelList('');
   } catch (err) {
     toast(err.message || 'Saqlashda xatolik', 'e');
   }
+}
+
+async function fetchAndShowGrams(mat, model) {
+  const key = mat + '|' + model;
+  try {
+    const grams = await apiGetModelGrams(mat, model);
+    _histGrammCache[key] = Array.isArray(grams) ? grams : [];
+  } catch {
+    _histGrammCache[key] = [];
+  }
+  if (_isHistAdmin2()) {
+    renderHistGrammSugg();
+  } else {
+    renderHistGrammSelectList(_histGrammCache[key]);
+  }
+}
+
+function renderHistGrammSugg() {
+  const model = document.getElementById('hModel')?.value?.trim() || '';
+  const key   = _histMat + '|' + model;
+  const all   = _histGrammCache[key] || [];
+  const q     = (document.getElementById('hGrammInput')?.value || '').trim();
+  const filtered = q ? all.filter(g => String(g).startsWith(q)) : all;
+  const box = document.getElementById('hGrammSuggList');
+  if (!box) return;
+  box.innerHTML = filtered.map(g =>
+    `<div class="hist-model-item" onclick="selectHistGrammSugg(${g})">${g} gr</div>`
+  ).join('');
+}
+
+function selectHistGrammSugg(gramm) {
+  const inp = document.getElementById('hGrammInput');
+  if (inp) { inp.value = gramm; renderHistGrammSugg(); }
+}
+
+function renderHistGrammSelectList(grams) {
+  const box = document.getElementById('hGrammSelectList');
+  if (!box) return;
+  if (!grams || !grams.length) {
+    box.innerHTML = '<div style="padding:10px 13px;color:var(--muted);font-size:13px">Gramm qiymatlari topilmadi</div>';
+    return;
+  }
+  const cur = document.getElementById('hGram')?.value || '';
+  box.innerHTML = grams.map(g =>
+    `<div class="hist-model-item${String(g) === cur ? ' selected' : ''}" onclick="selectHistGrammFromList(${g})">${g} gr</div>`
+  ).join('');
+}
+
+function selectHistGrammFromList(gramm) {
+  const hGram = document.getElementById('hGram');
+  if (hGram) hGram.value = String(gramm);
+  const model = document.getElementById('hModel')?.value?.trim() || '';
+  renderHistGrammSelectList(_histGrammCache[_histMat + '|' + model] || []);
+  onHistGramChange();
 }
 
 function setHistMode(material, mode) {
