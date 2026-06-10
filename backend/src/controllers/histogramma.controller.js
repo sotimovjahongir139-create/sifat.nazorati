@@ -50,20 +50,13 @@ async function create(req, res, next) {
       : (gram && !isNaN(parseInt(gram)) ? parseInt(gram) : null);
 
     if (req.user.username !== 'admin2' && effectiveGramm !== null) {
-      const { rows: gramRows } = await db.query(
-        `SELECT 1 FROM model_grams WHERE material_type=$1 AND model=$2 AND gramm=$3`,
-        [material_type, model.trim(), effectiveGramm]
+      const { rows: rr } = await db.query(
+        `SELECT min_gram, max_gram FROM model_grams WHERE material_type=$1 AND model=$2`,
+        [material_type, model.trim()]
       );
-      if (!gramRows.length) {
-        return res.status(400).json({ error: "Bu gramm qiymati modelga tegishli emas" });
-      }
-    }
-
-    if (req.user.username === 'admin2' && effectiveGramm !== null) {
-      await db.query(
-        `INSERT INTO model_grams (material_type, model, gramm) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
-        [material_type, model.trim(), effectiveGramm]
-      );
+      if (!rr.length) return res.status(400).json({ error: "Bu model uchun gramm diapazoni aniqlanmagan" });
+      if (effectiveGramm < rr[0].min_gram || effectiveGramm > rr[0].max_gram)
+        return res.status(400).json({ error: `Gramm ${rr[0].min_gram}–${rr[0].max_gram} orasida bo'lishi kerak` });
     }
 
     const { rows } = await db.query(
@@ -79,38 +72,35 @@ async function create(req, res, next) {
 async function listGrams(req, res, next) {
   try {
     const { material_type, model } = req.query;
-    if (!material_type || !model) {
-      return res.status(400).json({ error: 'material_type va model kerak' });
-    }
-    const { rows } = await db.query(
-      `SELECT gramm FROM model_grams WHERE material_type=$1 AND model=$2 ORDER BY gramm ASC`,
-      [material_type, model.trim()]
-    );
-    res.json(rows.map(r => r.gramm));
+    if (!material_type) return res.status(400).json({ error: 'material_type kerak' });
+    const params = [material_type];
+    let sql = `SELECT model, min_gram, max_gram FROM model_grams WHERE material_type=$1`;
+    if (model) { sql += ` AND model=$2`; params.push(model.trim()); }
+    sql += ` ORDER BY model ASC`;
+    const { rows } = await db.query(sql, params);
+    res.json(rows);
   } catch (err) { next(err); }
 }
 
 async function addGram(req, res, next) {
   try {
-    if (req.user.username !== 'admin2') {
-      return res.status(403).json({ error: "Ruxsat yo'q" });
-    }
-    const { material_type, model, gramm } = req.body;
-    if (!material_type || !model || gramm === undefined) {
+    if (req.user.username !== 'admin2') return res.status(403).json({ error: "Ruxsat yo'q" });
+    const { material_type, model, min_gram, max_gram } = req.body;
+    if (!material_type || !model || min_gram == null || max_gram == null)
       return res.status(400).json({ error: 'Barcha maydonlar kerak' });
-    }
-    if (!VALID_MATERIALS.includes(material_type)) {
+    if (!VALID_MATERIALS.includes(material_type))
       return res.status(400).json({ error: "Noto'g'ri material turi" });
-    }
-    const grammInt = parseInt(gramm);
-    if (isNaN(grammInt) || grammInt <= 0) {
-      return res.status(400).json({ error: "Gramm 0 dan katta bo'lishi kerak" });
-    }
+    const minInt = parseInt(min_gram), maxInt = parseInt(max_gram);
+    if (isNaN(minInt) || minInt <= 0)
+      return res.status(400).json({ error: "Min gramm 0 dan katta bo'lishi kerak" });
+    if (isNaN(maxInt) || maxInt < minInt)
+      return res.status(400).json({ error: "Max gramm min grammdan katta yoki teng bo'lishi kerak" });
     await db.query(
-      `INSERT INTO model_grams (material_type, model, gramm) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
-      [material_type, model.trim(), grammInt]
+      `INSERT INTO model_grams (material_type, model, min_gram, max_gram) VALUES ($1,$2,$3,$4)
+       ON CONFLICT (material_type, model) DO UPDATE SET min_gram=$3, max_gram=$4`,
+      [material_type, model.trim(), minInt, maxInt]
     );
-    res.status(201).json({ ok: true });
+    res.status(201).json({ ok: true, min_gram: minInt, max_gram: maxInt });
   } catch (err) { next(err); }
 }
 

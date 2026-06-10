@@ -739,8 +739,9 @@ async function removeUser(id, username) {
 // ── HISTOGRAMMA MODULE ───────────────────────────────────────
 let _histData    = [];
 let _histMat        = null;
-let _histGrammCache = {};
-let _histPUMode     = 'oylik';
+let _histGrammCache  = {};
+let _histModelsCache = {};
+let _histPUMode      = 'oylik';
 let _histTEPMode = 'oylik';
 let _histPUModel  = '';
 let _histTEPModel = '';
@@ -749,9 +750,11 @@ function _isHistAdmin2() { return getCurrentUser()?.username === 'admin2'; }
 function _isHistAdmin()  { return getCurrentUser()?.username === 'admin'; }
 
 function _applyHistRoles() {
-  const full   = _isHistAdmin2();
+  const isA2   = _isHistAdmin2();
   const addBtn = document.getElementById('hModelAddBtn');
-  if (addBtn) addBtn.style.display = full ? '' : 'none';
+  if (addBtn) addBtn.style.display = isA2 ? '' : 'none';
+  const dateWrap = document.getElementById('hDateWrap');
+  if (dateWrap) dateWrap.style.display = isA2 ? 'none' : '';
 }
 
 function setHistModelFilter(material, model) {
@@ -765,7 +768,7 @@ function _refreshHistModelSelects() {
     const sel = document.getElementById('histModelSel-' + mat);
     if (!sel) return;
     const cur    = mat === 'PU' ? _histPUModel : _histTEPModel;
-    const models = _getAllHistModels(mat);
+    const models = (_histModelsCache[mat] || []).map(r => r.model);
     sel.innerHTML = '<option value="">Barcha modellar</option>' +
       models.map(m => `<option value="${m}"${m === cur ? ' selected' : ''}>${m}</option>`).join('');
   });
@@ -801,11 +804,10 @@ function _renderGramSelect(mat, model) {
 }
 
 function onHistGramChange() {
-  const val      = document.getElementById('hGram').value;
-  const canWrite = _isHistAdmin2() || _isHistAdmin();
-  document.getElementById('hMiqdorWrap').style.display = (val && canWrite) ? 'block' : 'none';
+  const val = document.getElementById('hGram').value;
+  document.getElementById('hMiqdorWrap').style.display = val ? 'block' : 'none';
   const saveBtn = document.getElementById('histSaveBtn');
-  if (saveBtn) saveBtn.style.display = (val && canWrite) ? 'flex' : 'none';
+  if (saveBtn) saveBtn.style.display = val ? 'flex' : 'none';
 }
 
 function toggleGramAdd() {
@@ -832,7 +834,8 @@ function addHistCustomGram() {
 }
 
 function renderHistModelList(q) {
-  const all      = _getAllHistModels(_histMat || 'PU');
+  const mat = _histMat || 'PU';
+  const all = (_histModelsCache[mat] || []).map(r => r.model);
   const filtered = q ? all.filter(m => m.toLowerCase().includes(q.toLowerCase())) : all;
   const sel      = document.getElementById('hModel').value.trim();
   const box      = document.getElementById('hModelListBox');
@@ -847,28 +850,25 @@ function selectHistModelFromList(model) {
   renderHistModelList(model);
   if (_isHistAdmin2() && _histMat) {
     document.getElementById('hGrammInputWrap').style.display = 'block';
-    document.getElementById('hGrammInput').value = '';
-    const suggList = document.getElementById('hGrammSuggList');
-    if (suggList) suggList.innerHTML = '';
     document.getElementById('hGramWrap').style.display = 'none';
     document.getElementById('hMiqdorWrap').style.display = 'none';
     const saveBtn = document.getElementById('histSaveBtn');
     if (saveBtn) saveBtn.style.display = 'none';
-    fetchAndShowGrams(_histMat, model);
-  } else {
-    const canWrite = _isHistAdmin();
-    if (canWrite && _histMat) {
-      const gramWrap = document.getElementById('hGramWrap');
-      if (gramWrap) gramWrap.style.display = 'block';
-      const hGram = document.getElementById('hGram');
-      if (hGram) hGram.value = '';
-      const selectList = document.getElementById('hGrammSelectList');
-      if (selectList) selectList.innerHTML = '<div style="padding:10px 13px;color:var(--muted);font-size:13px">Yuklanmoqda...</div>';
-      fetchAndShowGrams(_histMat, model);
-    }
+    const cached = (_histModelsCache[_histMat] || []).find(r => r.model === model);
+    document.getElementById('hGrammMin').value = cached ? cached.min_gram : '';
+    document.getElementById('hGrammMax').value = cached ? cached.max_gram : '';
+  } else if (_histMat) {
+    document.getElementById('hGramWrap').style.display = 'block';
+    document.getElementById('hGrammInputWrap').style.display = 'none';
+    const hGram = document.getElementById('hGram');
+    if (hGram) hGram.value = '';
+    const search = document.getElementById('hGrammSearch');
+    if (search) search.value = '';
     document.getElementById('hMiqdorWrap').style.display = 'none';
     const saveBtn = document.getElementById('histSaveBtn');
     if (saveBtn) saveBtn.style.display = 'none';
+    const cached = (_histModelsCache[_histMat] || []).find(r => r.model === model);
+    renderHistGrammSelectList(cached ? cached.min_gram : null, cached ? cached.max_gram : null, '');
   }
 }
 
@@ -879,10 +879,14 @@ function setupHistogramma() {
   document.getElementById('hMiqdorWrap').style.display = 'none';
   const hGrammInputWrap = document.getElementById('hGrammInputWrap');
   if (hGrammInputWrap) hGrammInputWrap.style.display = 'none';
-  const hGrammInput = document.getElementById('hGrammInput');
-  if (hGrammInput) hGrammInput.value = '';
-  const hGrammSuggList = document.getElementById('hGrammSuggList');
-  if (hGrammSuggList) hGrammSuggList.innerHTML = '';
+  const hGrammMin = document.getElementById('hGrammMin');
+  if (hGrammMin) hGrammMin.value = '';
+  const hGrammMax = document.getElementById('hGrammMax');
+  if (hGrammMax) hGrammMax.value = '';
+  const hGrammSearch = document.getElementById('hGrammSearch');
+  if (hGrammSearch) hGrammSearch.value = '';
+  const hGrammSelectList = document.getElementById('hGrammSelectList');
+  if (hGrammSelectList) hGrammSelectList.innerHTML = '';
   const saveBtn = document.getElementById('histSaveBtn');
   if (saveBtn) saveBtn.style.display = 'none';
   document.getElementById('hModel').value  = '';
@@ -909,13 +913,18 @@ function selectHistMat(mat) {
   document.getElementById('hMiqdorWrap').style.display = 'none';
   const hGrammInputWrap = document.getElementById('hGrammInputWrap');
   if (hGrammInputWrap) hGrammInputWrap.style.display = 'none';
-  const hGrammInput = document.getElementById('hGrammInput');
-  if (hGrammInput) hGrammInput.value = '';
-  const hSuggL = document.getElementById('hGrammSuggList');
-  if (hSuggL) hSuggL.innerHTML = '';
+  const hGrammMin = document.getElementById('hGrammMin');
+  if (hGrammMin) hGrammMin.value = '';
+  const hGrammMax = document.getElementById('hGrammMax');
+  if (hGrammMax) hGrammMax.value = '';
+  const hGrammSearch = document.getElementById('hGrammSearch');
+  if (hGrammSearch) hGrammSearch.value = '';
+  const hGrammSelectList2 = document.getElementById('hGrammSelectList');
+  if (hGrammSelectList2) hGrammSelectList2.innerHTML = '';
   const saveBtn = document.getElementById('histSaveBtn');
   if (saveBtn) saveBtn.style.display = 'none';
   renderHistModelList('');
+  fetchAndCacheModels(mat);
   _applyHistRoles();
 }
 
@@ -926,9 +935,7 @@ function onHistModelInput() {
 function addHistCustomModel() {
   const val = document.getElementById('hModel').value.trim();
   if (!val || !_histMat) { toast("Model nomini kiriting.", 'e'); return; }
-  _saveHistCustomModel(_histMat, val);
-  renderHistModelList(val);
-  toast("Model qo'shildi!", 's');
+  selectHistModelFromList(val);
 }
 
 async function saveHistogramma() {
@@ -944,8 +951,7 @@ async function saveHistogramma() {
   }
 
   try {
-    await apiPostHistogramma({ date, material_type, model, qty, gram });
-    _saveHistCustomModel(material_type, model);
+    await apiPostHistogramma({ date, material_type, model, qty, gramm: parseInt(gram) });
     const succEl = document.getElementById('histSuccMsg');
     succEl.style.display = 'flex';
     toast('Saqlandi!', 's');
@@ -954,7 +960,8 @@ async function saveHistogramma() {
     _renderHistCharts();
     document.getElementById('hMiqdor').value = '';
     document.getElementById('hGram').value   = '';
-    _renderGramSelect(material_type, model);
+    const cached = (_histModelsCache[material_type] || []).find(r => r.model === model);
+    if (cached) renderHistGrammSelectList(cached.min_gram, cached.max_gram, '');
     document.getElementById('hMiqdorWrap').style.display = 'none';
     const saveBtn = document.getElementById('histSaveBtn');
     if (saveBtn) saveBtn.style.display = 'none';
@@ -963,39 +970,43 @@ async function saveHistogramma() {
   }
 }
 
-async function saveHistGramm() {
+async function saveHistGrammRange() {
   if (!_isHistAdmin2()) return;
-  const date          = document.getElementById('hDate').value;
   const material_type = _histMat;
   const model         = document.getElementById('hModel').value.trim();
-  const grammVal      = document.getElementById('hGrammInput').value;
-  const gramm         = parseInt(grammVal);
+  const minVal        = document.getElementById('hGrammMin').value;
+  const maxVal        = document.getElementById('hGrammMax').value;
+  const minInt        = parseInt(minVal);
+  const maxInt        = parseInt(maxVal);
 
-  if (!date || !material_type || !model) {
-    toast("Barcha maydonlarni to'ldiring.", 'e');
+  if (!material_type || !model) {
+    toast("Material turi va modelni tanlang.", 'e');
     return;
   }
-  if (!grammVal || isNaN(gramm) || gramm <= 0) {
-    toast("Gramm qiymatini to'g'ri kiriting (0 dan katta bo'lishi kerak).", 'e');
+  if (!minVal || isNaN(minInt) || minInt <= 0) {
+    toast("Min gramm 0 dan katta bo'lishi kerak.", 'e');
+    return;
+  }
+  if (!maxVal || isNaN(maxInt) || maxInt < minInt) {
+    toast("Max gramm min grammdan katta yoki teng bo'lishi kerak.", 'e');
     return;
   }
 
   try {
-    await apiPostHistogramma({ date, material_type, model, gramm, qty: 1 });
-    _saveHistCustomModel(material_type, model);
-    toast('Saqlandi!', 's');
-    const succEl = document.getElementById('histSuccMsg');
-    succEl.style.display = 'flex';
-    setTimeout(() => { succEl.style.display = 'none'; }, 2000);
-    _histData = await apiGetHistogramma() || [];
-    _renderHistCharts();
-    const _ck = material_type + '|' + model;
-    if (!(_histGrammCache[_ck] || []).includes(gramm)) {
-      _histGrammCache[_ck] = [...(_histGrammCache[_ck] || []), gramm].sort((a, b) => a - b);
+    await apiPostModelGram(material_type, model, minInt, maxInt);
+    const cache = _histModelsCache[material_type] || [];
+    const idx   = cache.findIndex(r => r.model === model);
+    if (idx >= 0) {
+      cache[idx].min_gram = minInt;
+      cache[idx].max_gram = maxInt;
+    } else {
+      cache.push({ model, min_gram: minInt, max_gram: maxInt });
+      cache.sort((a, b) => a.model.localeCompare(b.model));
     }
-    document.getElementById('hGrammInput').value = '';
-    const _sl = document.getElementById('hGrammSuggList');
-    if (_sl) _sl.innerHTML = '';
+    _histModelsCache[material_type] = cache;
+    toast('Saqlandi!', 's');
+    document.getElementById('hGrammMin').value = '';
+    document.getElementById('hGrammMax').value = '';
     document.getElementById('hGrammInputWrap').style.display = 'none';
     document.getElementById('hModel').value = '';
     renderHistModelList('');
@@ -1004,57 +1015,50 @@ async function saveHistGramm() {
   }
 }
 
-async function fetchAndShowGrams(mat, model) {
-  const key = mat + '|' + model;
+async function fetchAndCacheModels(mat) {
   try {
-    const grams = await apiGetModelGrams(mat, model);
-    _histGrammCache[key] = Array.isArray(grams) ? grams : [];
+    const rows = await apiGetModelGrams(mat);
+    _histModelsCache[mat] = Array.isArray(rows) ? rows : [];
   } catch {
-    _histGrammCache[key] = [];
+    _histModelsCache[mat] = [];
   }
-  if (_isHistAdmin2()) {
-    renderHistGrammSugg();
-  } else {
-    renderHistGrammSelectList(_histGrammCache[key]);
-  }
+  renderHistModelList('');
 }
 
-function renderHistGrammSugg() {
-  const model = document.getElementById('hModel')?.value?.trim() || '';
-  const key   = _histMat + '|' + model;
-  const all   = _histGrammCache[key] || [];
-  const q     = (document.getElementById('hGrammInput')?.value || '').trim();
-  const filtered = q ? all.filter(g => String(g).startsWith(q)) : all;
-  const box = document.getElementById('hGrammSuggList');
-  if (!box) return;
-  box.innerHTML = filtered.map(g =>
-    `<div class="hist-model-item" onclick="selectHistGrammSugg(${g})">${g} gr</div>`
-  ).join('');
-}
-
-function selectHistGrammSugg(gramm) {
-  const inp = document.getElementById('hGrammInput');
-  if (inp) { inp.value = gramm; renderHistGrammSugg(); }
-}
-
-function renderHistGrammSelectList(grams) {
+function renderHistGrammSelectList(min_gram, max_gram, q) {
   const box = document.getElementById('hGrammSelectList');
   if (!box) return;
-  if (!grams || !grams.length) {
-    box.innerHTML = '<div style="padding:10px 13px;color:var(--muted);font-size:13px">Gramm qiymatlari topilmadi</div>';
+  if (min_gram == null || max_gram == null) {
+    box.innerHTML = '<div style="padding:10px 13px;color:var(--muted);font-size:13px">Gramm diapazoni aniqlanmagan</div>';
     return;
   }
   const cur = document.getElementById('hGram')?.value || '';
-  box.innerHTML = grams.map(g =>
+  const all = [];
+  for (let g = min_gram; g <= max_gram; g++) all.push(g);
+  const filtered = q ? all.filter(g => String(g).startsWith(q)) : all;
+  if (!filtered.length) {
+    box.innerHTML = '<div style="padding:10px 13px;color:var(--muted);font-size:13px">Gramm qiymatlari topilmadi</div>';
+    return;
+  }
+  box.innerHTML = filtered.map(g =>
     `<div class="hist-model-item${String(g) === cur ? ' selected' : ''}" onclick="selectHistGrammFromList(${g})">${g} gr</div>`
   ).join('');
+}
+
+function filterHistGrammList() {
+  const model  = document.getElementById('hModel')?.value?.trim() || '';
+  const cached = (_histModelsCache[_histMat] || []).find(r => r.model === model);
+  const q      = (document.getElementById('hGrammSearch')?.value || '').trim();
+  renderHistGrammSelectList(cached ? cached.min_gram : null, cached ? cached.max_gram : null, q);
 }
 
 function selectHistGrammFromList(gramm) {
   const hGram = document.getElementById('hGram');
   if (hGram) hGram.value = String(gramm);
-  const model = document.getElementById('hModel')?.value?.trim() || '';
-  renderHistGrammSelectList(_histGrammCache[_histMat + '|' + model] || []);
+  const model  = document.getElementById('hModel')?.value?.trim() || '';
+  const cached = (_histModelsCache[_histMat] || []).find(r => r.model === model);
+  renderHistGrammSelectList(cached ? cached.min_gram : null, cached ? cached.max_gram : null,
+    (document.getElementById('hGrammSearch')?.value || '').trim());
   onHistGramChange();
 }
 
@@ -1081,6 +1085,7 @@ async function renderHistogramma() {
   } catch {
     _histData = _histData || [];
   }
+  await Promise.all(['PU', 'TEP'].map(mat => fetchAndCacheModels(mat)));
   _refreshHistModelSelects();
   _renderHistCharts();
 }

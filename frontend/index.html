@@ -292,7 +292,7 @@
       <div class="fcard" style="margin-bottom:22px">
         <div class="succ-msg" id="histSuccMsg" style="display:none"><i class="fas fa-check-circle"></i>&nbsp; Muvaffaqiyatli saqlandi!</div>
         <div class="fgrid">
-          <div>
+          <div id="hDateWrap">
             <label class="flbl">Sana</label>
             <input type="date" class="fi" id="hDate">
           </div>
@@ -310,16 +310,25 @@
             <button type="button" class="reason-add-btn" id="hModelAddBtn" onclick="addHistCustomModel()" style="margin-top:8px"><i class="fas fa-plus"></i> Yangi model qo'shish</button>
           </div>
           <div id="hGrammInputWrap" style="display:none">
-            <label class="flbl">GRAMM</label>
-            <input type="number" class="fi" id="hGrammInput" min="1" placeholder="Gramm miqdorini kiriting..." oninput="renderHistGrammSugg()">
-            <div class="hist-model-list" id="hGrammSuggList"></div>
+            <label class="flbl">GRAMM DIAPAZONI</label>
+            <div style="display:flex;gap:10px;align-items:flex-end">
+              <div style="flex:1">
+                <label class="flbl" style="font-size:11px;opacity:.7;margin-bottom:4px">Dan</label>
+                <input type="number" class="fi" id="hGrammMin" min="1" placeholder="Masalan: 125">
+              </div>
+              <div style="flex:1">
+                <label class="flbl" style="font-size:11px;opacity:.7;margin-bottom:4px">Gacha</label>
+                <input type="number" class="fi" id="hGrammMax" min="1" placeholder="Masalan: 145">
+              </div>
+            </div>
             <div style="margin-top:12px">
-              <button class="btn-save" onclick="saveHistGramm()"><i class="fas fa-save"></i> Saqlash</button>
+              <button class="btn-save" onclick="saveHistGrammRange()"><i class="fas fa-save"></i> Saqlash</button>
             </div>
           </div>
           <div id="hGramWrap" style="display:none">
             <label class="flbl">GRAMM</label>
-            <div class="hist-model-list" id="hGrammSelectList"></div>
+            <input type="text" class="fi" id="hGrammSearch" placeholder="Qidirish..." oninput="filterHistGrammList()" autocomplete="off" style="margin-bottom:6px">
+            <div class="hist-model-list" id="hGrammSelectList" style="max-height:180px;overflow-y:auto"></div>
             <input type="hidden" id="hGram">
           </div>
           <div id="hMiqdorWrap" style="display:none">

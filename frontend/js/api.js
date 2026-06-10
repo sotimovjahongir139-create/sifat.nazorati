@@ -116,12 +116,12 @@ async function apiDeleteHistogrammaModel(material_type, model) {
 }
 
 async function apiGetModelGrams(material_type, model) {
-  const q = new URLSearchParams({ material_type, model }).toString();
-  return apiFetch('/histogramma/grams?' + q);
+  const p = model ? { material_type, model } : { material_type };
+  return apiFetch('/histogramma/grams?' + new URLSearchParams(p).toString());
 }
 
-async function apiPostModelGram(material_type, model, gramm) {
-  return apiFetch('/histogramma/grams', { method: 'POST', body: { material_type, model, gramm } });
+async function apiPostModelGram(material_type, model, min_gram, max_gram) {
+  return apiFetch('/histogramma/grams', { method: 'POST', body: { material_type, model, min_gram, max_gram } });
 }
 
 // ── USERS (admin only) ──────────────────────────────────────
