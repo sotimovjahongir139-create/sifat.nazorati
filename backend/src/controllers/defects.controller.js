@@ -127,4 +127,23 @@ async function modelCauses(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, create, remove, modelCauses, categoryModels };
+async function weeklySummary(req, res, next) {
+  try {
+    const { rows } = await db.query(`
+      SELECT category, COALESCE(SUM(qty),0)::int AS count
+      FROM entries
+      WHERE date >= date_trunc('week', CURRENT_DATE)
+        AND date <= CURRENT_DATE
+      GROUP BY category
+    `);
+    const result = { qayta_ishlab: 0, yamaladigan: 0, orta: 0 };
+    rows.forEach(r => {
+      if (r.category === 'qayta')  result.qayta_ishlab = r.count;
+      else if (r.category === 'yamala') result.yamaladigan = r.count;
+      else if (r.category === 'orta')   result.orta = r.count;
+    });
+    res.json(result);
+  } catch (err) { next(err); }
+}
+
+module.exports = { list, create, remove, modelCauses, categoryModels, weeklySummary };

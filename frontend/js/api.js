@@ -66,6 +66,10 @@ async function apiDeleteDefect(id) {
   return apiFetch('/defects/' + id, { method: 'DELETE' });
 }
 
+async function apiGetWeeklySummary() {
+  return apiFetch('/defects/weekly-summary');
+}
+
 async function apiGetModelCauses(model, month) {
   return apiFetch('/defects/model-causes?model=' + encodeURIComponent(model) + '&month=' + encodeURIComponent(month));
 }

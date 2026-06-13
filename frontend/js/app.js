@@ -27,8 +27,23 @@ function toggleSidebar() {
   document.querySelector('.sidebar').classList.contains('open') ? closeSidebar() : openSidebar();
 }
 
+// ── SIDEBAR WEEKLY BADGES ───────────────────────────────────
+async function fetchWeeklySidebar() {
+  try {
+    const d = await apiGetWeeklySummary();
+    const map = { qayta: d.qayta_ishlab, yamala: d.yamaladigan, orta: d.orta };
+    ['qayta', 'yamala', 'orta'].forEach(k => {
+      const el = document.getElementById('badge-' + k);
+      if (!el) return;
+      const v = map[k];
+      if (v != null) { el.textContent = v; el.style.display = ''; }
+    });
+  } catch { /* hide silently — badges stay hidden */ }
+}
+
 // ── NAVIGATION ──────────────────────────────────────────────
 async function goPage(name) {
+  fetchWeeklySidebar();
   if (window.innerWidth <= 780) closeSidebar();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-it').forEach(n => n.classList.remove('active'));
