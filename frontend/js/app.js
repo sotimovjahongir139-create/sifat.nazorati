@@ -31,8 +31,8 @@ function toggleSidebar() {
 async function fetchWeeklySidebar() {
   try {
     const d = await apiGetWeeklySummary();
-    const map = { qayta: d.qayta_ishlab, yamala: d.yamaladigan, orta: d.orta };
-    ['qayta', 'yamala', 'orta'].forEach(k => {
+    const map = { qayta: d.qayta_ishlab, yamala: d.yamaladigan, orta: d.orta, yamchiq: d.yamchiq };
+    ['qayta', 'yamala', 'orta', 'yamchiq'].forEach(k => {
       const el = document.getElementById('badge-' + k);
       if (!el) return;
       const v = map[k];
@@ -70,7 +70,7 @@ async function goPage(name) {
     await loadData();
     renderAnalytics();
   }
-  if (['qayta','yamala','orta'].includes(name)) {
+  if (['qayta','yamala','orta','yamchiq'].includes(name)) {
     await loadData();
     renderCatPage(name);
   }

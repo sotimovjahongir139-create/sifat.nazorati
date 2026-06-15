@@ -60,6 +60,7 @@
       <div class="nav-it" onclick="goPage('qayta')"><i class="fas fa-times-circle" style="color:var(--red)"></i><span>Qayta ishlab bo'lmaydigan</span><span id="badge-qayta" style="display:none;margin-left:auto;font-size:11px;padding:2px 7px;border-radius:10px;background:rgba(239,68,68,0.15);color:#f87171;flex-shrink:0"></span></div>
       <div class="nav-it" onclick="goPage('yamala')"><i class="fas fa-tools" style="color:var(--blue)"></i><span>Yamaladigan brak</span><span id="badge-yamala" style="display:none;margin-left:auto;font-size:11px;padding:2px 7px;border-radius:10px;background:rgba(59,130,246,0.15);color:#60a5fa;flex-shrink:0"></span></div>
       <div class="nav-it" onclick="goPage('orta')"><i class="fas fa-minus-circle" style="color:var(--yellow)"></i><span>O'rta brak</span><span id="badge-orta" style="display:none;margin-left:auto;font-size:11px;padding:2px 7px;border-radius:10px;background:rgba(234,179,8,0.15);color:#fbbf24;flex-shrink:0"></span></div>
+      <div class="nav-it" onclick="goPage('yamchiq')"><i class="fas fa-check-circle" style="color:#ff9f43"></i><span>Yamalab chiqilgan brak</span><span id="badge-yamchiq" style="display:none;margin-left:auto;font-size:11px;padding:2px 7px;border-radius:10px;background:rgba(255,159,67,0.15);color:#ff9f43;flex-shrink:0"></span></div>
       <div class="nav-sep admin-only"></div>
       <div class="nav-lbl admin-only">Admin</div>
       <div class="nav-it admin-only" onclick="goPage('users')"><i class="fas fa-users-cog"></i><span>Foydalanuvchilar</span></div>
@@ -221,6 +222,7 @@
               <option value="qayta">Qayta ishlab bo'lmaydigan brak</option>
               <option value="yamala">Yamaladigan brak</option>
               <option value="orta">O'rta brak</option>
+              <option value="yamchiq">Yamalab chiqilgan brak</option>
             </select>
           </div>
           <div>
@@ -283,6 +285,7 @@
     <div class="page" id="page-qayta"></div>
     <div class="page" id="page-yamala"></div>
     <div class="page" id="page-orta"></div>
+    <div class="page" id="page-yamchiq"></div>
 
     <!-- USERS PAGE (admin only) -->
     <div class="page" id="page-users"></div>

@@ -44,12 +44,13 @@ const REASONS = [
 ];
 
 const CATS = [
-  {id:'qayta', label:"Qayta ishlab bo'lmaydigan brak", navLabel:"Qayta ishlab bo'lmaydigan", accentCls:'r', accent:'#ff4757', icon:'fas fa-times-circle'},
-  {id:'yamala',label:'Yamaladigan brak',               navLabel:'Yamaladigan brak',           accentCls:'b', accent:'#4f8ef7', icon:'fas fa-tools'},
-  {id:'orta',  label:"O'rta brak",                     navLabel:"O'rta brak",                 accentCls:'y', accent:'#ffd43b', icon:'fas fa-minus-circle'},
+  {id:'qayta',   label:"Qayta ishlab bo'lmaydigan brak", navLabel:"Qayta ishlab bo'lmaydigan", accentCls:'r', accent:'#ff4757', icon:'fas fa-times-circle'},
+  {id:'yamala',  label:'Yamaladigan brak',               navLabel:'Yamaladigan brak',           accentCls:'b', accent:'#4f8ef7', icon:'fas fa-tools'},
+  {id:'orta',    label:"O'rta brak",                     navLabel:"O'rta brak",                 accentCls:'y', accent:'#ffd43b', icon:'fas fa-minus-circle'},
+  {id:'yamchiq', label:'Yamalab chiqilgan brak',         navLabel:'Yamalab chiqilgan brak',     accentCls:'o', accent:'#ff9f43', icon:'fas fa-check-circle'},
 ];
 
-const CAT_LABEL = {qayta:"Qayta ishlab bo'lmaydigan", yamala:'Yamaladigan', orta:"O'rta brak"};
+const CAT_LABEL = {qayta:"Qayta ishlab bo'lmaydigan", yamala:'Yamaladigan', orta:"O'rta brak", yamchiq:'Yamalab chiqilgan'};
 
 const REASON_COLORS = [
   'rgba(79,142,247,.8)','rgba(255,71,87,.8)','rgba(46,213,115,.8)',
@@ -77,6 +78,7 @@ const PAGE_META = {
   qayta:    {t:"Qayta ishlab bo'lmaydigan brak",       s:"Tuzatib bo'lmaydigan nuqsonlar"},
   yamala:   {t:'Yamaladigan brak',                     s:"Tuzatilishi mumkin bo'lgan nuqsonlar"},
   orta:     {t:"O'rta brak",                           s:"O'rta darajadagi nuqsonlar"},
+  yamchiq:  {t:'Yamalab chiqilgan brak',               s:'Yamalab chiqilgan nuqsonlar'},
 };
 
 // ── CHART REGISTRY ──────────────────────────────────────────

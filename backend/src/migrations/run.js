@@ -68,6 +68,9 @@ async function runMigrations() {
   await db.query(`CREATE INDEX IF NOT EXISTS idx_entries_date       ON entries(date)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_entries_category   ON entries(category)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_entries_created_by ON entries(created_by)`);
+  // Widen category CHECK to include yamchiq
+  await db.query(`ALTER TABLE entries DROP CONSTRAINT IF EXISTS entries_category_check`);
+  await db.query(`ALTER TABLE entries ADD CONSTRAINT entries_category_check CHECK (category IN ('qayta','yamala','orta','yamchiq'))`);
   await db.query(`ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS qty INTEGER NOT NULL DEFAULT 1`);
   await db.query(`ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS gramm INTEGER DEFAULT NULL`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_qr_material        ON quality_records(material_type)`);

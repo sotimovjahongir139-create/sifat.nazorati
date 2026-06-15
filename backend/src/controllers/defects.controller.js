@@ -1,6 +1,6 @@
 const db = require('../config/database');
 
-const VALID_CATS = ['qayta', 'yamala', 'orta'];
+const VALID_CATS = ['qayta', 'yamala', 'orta', 'yamchiq'];
 
 async function list(req, res, next) {
   try {
@@ -136,11 +136,12 @@ async function weeklySummary(req, res, next) {
         AND date <= CURRENT_DATE
       GROUP BY category
     `);
-    const result = { qayta_ishlab: 0, yamaladigan: 0, orta: 0 };
+    const result = { qayta_ishlab: 0, yamaladigan: 0, orta: 0, yamchiq: 0 };
     rows.forEach(r => {
-      if (r.category === 'qayta')  result.qayta_ishlab = r.count;
-      else if (r.category === 'yamala') result.yamaladigan = r.count;
-      else if (r.category === 'orta')   result.orta = r.count;
+      if (r.category === 'qayta')    result.qayta_ishlab = r.count;
+      else if (r.category === 'yamala')   result.yamaladigan = r.count;
+      else if (r.category === 'orta')     result.orta = r.count;
+      else if (r.category === 'yamchiq')  result.yamchiq = r.count;
     });
     res.json(result);
   } catch (err) { next(err); }
