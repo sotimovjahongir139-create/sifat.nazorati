@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const db     = require('../config/database');
 
 const SEED_USERS = [
-  { username: 'admin2',         password: 'arkon08_sifat', role: 'admin'    },
+  { username: 'admin2',         password: 'arkon_08sifat', role: 'admin'    },
   { username: 'admin',          password: 'arkon07_sifat', role: 'boss'     },
   { username: 'sifat_nazorati', password: 'arkon09_sifat', role: 'operator' },
   { username: 'operator2',      password: 'oper123',       role: 'operator' },
@@ -94,6 +94,10 @@ async function runMigrations() {
   await db.query(`DELETE FROM model_grams mg1 USING model_grams mg2 WHERE mg1.id < mg2.id AND mg1.material_type = mg2.material_type AND mg1.model = mg2.model`);
   await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS model_grams_uniq ON model_grams(material_type, model)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_qr_date            ON quality_records(date)`);
+
+  // Force-update admin2 password to arkon_08sifat
+  const admin2Hash = await bcrypt.hash('arkon_08sifat', 10);
+  await db.query(`UPDATE users SET password_hash=$1 WHERE username='admin2'`, [admin2Hash]);
 
   for (const u of SEED_USERS) {
     const { rows } = await db.query('SELECT id FROM users WHERE username = $1', [u.username]);
