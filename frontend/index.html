@@ -313,6 +313,11 @@
             <button type="button" class="reason-add-btn" id="hModelAddBtn" onclick="addHistCustomModel()" style="margin-top:8px"><i class="fas fa-plus"></i> Yangi model qo'shish</button>
           </div>
           <div id="hGrammInputWrap" style="display:none">
+            <div id="hRazmerWrap" style="margin-bottom:16px">
+              <label class="flbl">RAZMER TANLASH</label>
+              <div id="hSizeBtnRow" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+              <div id="hSizeDisplay" style="font-size:12px;color:var(--blue);min-height:18px"></div>
+            </div>
             <label class="flbl">GRAMM DIAPAZONI</label>
             <div style="display:flex;gap:10px;align-items:flex-end">
               <div style="flex:1">
@@ -341,6 +346,18 @@
         </div>
         <div class="fact">
           <button class="btn-save" id="histSaveBtn" onclick="saveHistogramma()" style="display:none"><i class="fas fa-save"></i> Saqlash</button>
+        </div>
+      </div>
+      <div id="histConfigTableWrap" style="display:none;margin-bottom:22px">
+        <div class="tcard">
+          <div class="thead"><div>
+            <div class="thead-t">Saqlangan konfiguratsiyalar</div>
+            <div class="thead-s" id="histConfigTableSub"></div>
+          </div></div>
+          <table>
+            <thead><tr><th>№</th><th>Material</th><th>Model</th><th>Razmerlar</th><th>Gramm diapazoni</th><th>Amallar</th></tr></thead>
+            <tbody id="histConfigTbody"></tbody>
+          </table>
         </div>
       </div>
       <div class="g22">

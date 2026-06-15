@@ -124,8 +124,8 @@ async function apiGetModelGrams(material_type, model) {
   return apiFetch('/histogramma/grams?' + new URLSearchParams(p).toString());
 }
 
-async function apiPostModelGram(material_type, model, min_gram, max_gram) {
-  return apiFetch('/histogramma/grams', { method: 'POST', body: { material_type, model, min_gram, max_gram } });
+async function apiPostModelGram(material_type, model, min_gram, max_gram, sizes) {
+  return apiFetch('/histogramma/grams', { method: 'POST', body: { material_type, model, min_gram, max_gram, sizes } });
 }
 
 // ── USERS (admin only) ──────────────────────────────────────

@@ -246,6 +246,9 @@ textarea.fi{resize:vertical;min-height:88px}
 .hist-mat-btn{flex:1;background:var(--bg2);border:1.5px solid var(--border);border-radius:10px;padding:13px 12px;color:var(--text2);font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit}
 .hist-mat-btn:hover{border-color:var(--blue);color:var(--text);background:rgba(79,142,247,.07)}
 .hist-mat-btn.active{border-color:var(--blue);background:rgba(79,142,247,.15);color:var(--blue)}
+.hist-size-btn{background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:5px 10px;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit}
+.hist-size-btn:hover{border-color:var(--blue);color:var(--text)}
+.hist-size-btn.active{border-color:var(--blue);background:rgba(79,142,247,.15);color:var(--blue)}
 .hist-filter-sel{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:5px 26px 5px 10px;color:var(--text);font-size:12px;font-weight:500;outline:none;cursor:pointer;font-family:inherit;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%237777aa' d='M6 8L0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;transition:border .15s}
 .hist-filter-sel:focus{border-color:var(--blue)}
 .hist-model-list{margin-top:8px;max-height:190px;overflow-y:auto;background:var(--bg2);border:1px solid var(--border);border-radius:9px}

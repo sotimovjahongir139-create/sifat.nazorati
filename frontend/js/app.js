@@ -754,8 +754,10 @@ async function removeUser(id, username) {
 // ── HISTOGRAMMA MODULE ───────────────────────────────────────
 let _histData    = [];
 let _histMat        = null;
-let _histGrammCache  = {};
-let _histModelsCache = {};
+let _histGrammCache    = {};
+let _histModelsCache   = {};
+let _histSelectedSizes = [];
+const _HIST_SIZES      = [35,36,37,38,39,40,41,42,43,44,45,46,47];
 let _histPUMode      = 'oylik';
 let _histTEPMode = 'oylik';
 let _histPUModel  = '';
@@ -763,6 +765,74 @@ let _histTEPModel = '';
 
 function _isHistAdmin2() { return getCurrentUser()?.username === 'admin2'; }
 function _isHistAdmin()  { return getCurrentUser()?.username === 'admin'; }
+
+function renderHistSizeBtns() {
+  const box = document.getElementById('hSizeBtnRow');
+  if (!box) return;
+  box.innerHTML = _HIST_SIZES.map(s =>
+    `<button type="button" class="hist-size-btn${_histSelectedSizes.includes(s) ? ' active' : ''}" onclick="toggleHistSize(${s})">${s}</button>`
+  ).join('');
+}
+
+function renderHistSizesDisplay() {
+  const el = document.getElementById('hSizeDisplay');
+  if (!el) return;
+  el.textContent = _histSelectedSizes.length
+    ? 'Tanlangan: ' + [..._histSelectedSizes].sort((a, b) => a - b).join(', ')
+    : '';
+}
+
+function toggleHistSize(s) {
+  const idx = _histSelectedSizes.indexOf(s);
+  if (idx >= 0) _histSelectedSizes.splice(idx, 1);
+  else _histSelectedSizes.push(s);
+  renderHistSizeBtns();
+  renderHistSizesDisplay();
+}
+
+function renderHistConfigTable() {
+  if (!_isHistAdmin2()) return;
+  const wrap = document.getElementById('histConfigTableWrap');
+  if (!wrap) return;
+  wrap.style.display = 'block';
+  const sub = document.getElementById('histConfigTableSub');
+  if (sub) sub.textContent = _histMat ? _histMat + " bo'yicha" : 'Barcha materiallar';
+  const rows = _histMat
+    ? (_histModelsCache[_histMat] || []).map(r => ({ ...r, material_type: _histMat }))
+    : [
+        ...(_histModelsCache['PU']  || []).map(r => ({ ...r, material_type: 'PU' })),
+        ...(_histModelsCache['TEP'] || []).map(r => ({ ...r, material_type: 'TEP' }))
+      ];
+  const tbody = document.getElementById('histConfigTbody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Hozircha saqlangan ma'lumot yo'q</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map((r, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td><span class="mbadge">${r.material_type}</span></td>
+      <td>${r.model}</td>
+      <td style="font-size:12px">${r.sizes || '—'}</td>
+      <td>${r.min_gram}–${r.max_gram}</td>
+      <td><button class="reason-add-btn" onclick="editHistConfig('${r.material_type}','${r.model.replace(/'/g, "\\'")}')"><i class="fas fa-edit"></i> Tahrirlash</button></td>
+    </tr>`).join('');
+}
+
+function editHistConfig(material_type, model) {
+  selectHistMat(material_type);
+  document.getElementById('hModel').value = model;
+  renderHistModelList(model);
+  const cached = (_histModelsCache[material_type] || []).find(r => r.model === model);
+  if (!cached) return;
+  document.getElementById('hGrammInputWrap').style.display = 'block';
+  document.getElementById('hGrammMin').value = cached.min_gram;
+  document.getElementById('hGrammMax').value = cached.max_gram;
+  _histSelectedSizes = (cached.sizes ? cached.sizes.split(',').map(Number).filter(Boolean) : []);
+  renderHistSizeBtns();
+  renderHistSizesDisplay();
+  document.getElementById('page-histogramma')?.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 function _applyHistRoles() {
   const isA2   = _isHistAdmin2();
@@ -872,6 +942,9 @@ function selectHistModelFromList(model) {
     const cached = (_histModelsCache[_histMat] || []).find(r => r.model === model);
     document.getElementById('hGrammMin').value = cached ? cached.min_gram : '';
     document.getElementById('hGrammMax').value = cached ? cached.max_gram : '';
+    _histSelectedSizes = (cached && cached.sizes) ? cached.sizes.split(',').map(Number).filter(Boolean) : [];
+    renderHistSizeBtns();
+    renderHistSizesDisplay();
   } else if (_histMat) {
     document.getElementById('hGramWrap').style.display = 'block';
     document.getElementById('hGrammInputWrap').style.display = 'none';
@@ -911,7 +984,11 @@ function setupHistogramma() {
   document.getElementById('histSuccMsg').style.display = 'none';
   document.querySelectorAll('.hist-mat-btn').forEach(b => b.classList.remove('active'));
   _histMat = null;
+  _histSelectedSizes = [];
+  renderHistSizeBtns();
+  renderHistSizesDisplay();
   _applyHistRoles();
+  renderHistConfigTable();
 }
 
 function selectHistMat(mat) {
@@ -938,9 +1015,13 @@ function selectHistMat(mat) {
   if (hGrammSelectList2) hGrammSelectList2.innerHTML = '';
   const saveBtn = document.getElementById('histSaveBtn');
   if (saveBtn) saveBtn.style.display = 'none';
+  _histSelectedSizes = [];
+  renderHistSizeBtns();
+  renderHistSizesDisplay();
   renderHistModelList('');
   fetchAndCacheModels(mat);
   _applyHistRoles();
+  renderHistConfigTable();
 }
 
 function onHistModelInput() {
@@ -1007,15 +1088,18 @@ async function saveHistGrammRange() {
     return;
   }
 
+  const sizesStr = [..._histSelectedSizes].sort((a, b) => a - b).join(',');
+
   try {
-    await apiPostModelGram(material_type, model, minInt, maxInt);
+    await apiPostModelGram(material_type, model, minInt, maxInt, sizesStr);
     const cache = _histModelsCache[material_type] || [];
     const idx   = cache.findIndex(r => r.model === model);
     if (idx >= 0) {
       cache[idx].min_gram = minInt;
       cache[idx].max_gram = maxInt;
+      cache[idx].sizes    = sizesStr;
     } else {
-      cache.push({ model, min_gram: minInt, max_gram: maxInt });
+      cache.push({ model, min_gram: minInt, max_gram: maxInt, sizes: sizesStr });
       cache.sort((a, b) => a.model.localeCompare(b.model));
     }
     _histModelsCache[material_type] = cache;
@@ -1024,7 +1108,11 @@ async function saveHistGrammRange() {
     document.getElementById('hGrammMax').value = '';
     document.getElementById('hGrammInputWrap').style.display = 'none';
     document.getElementById('hModel').value = '';
+    _histSelectedSizes = [];
+    renderHistSizeBtns();
+    renderHistSizesDisplay();
     renderHistModelList('');
+    renderHistConfigTable();
   } catch (err) {
     toast(err.message || 'Saqlashda xatolik', 'e');
   }
@@ -1038,6 +1126,7 @@ async function fetchAndCacheModels(mat) {
     _histModelsCache[mat] = [];
   }
   renderHistModelList('');
+  renderHistConfigTable();
 }
 
 function renderHistGrammSelectList(min_gram, max_gram, q) {

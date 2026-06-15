@@ -74,7 +74,7 @@ async function listGrams(req, res, next) {
     const { material_type, model } = req.query;
     if (!material_type) return res.status(400).json({ error: 'material_type kerak' });
     const params = [material_type];
-    let sql = `SELECT model, min_gram, max_gram FROM model_grams WHERE material_type=$1`;
+    let sql = `SELECT model, min_gram, max_gram, sizes FROM model_grams WHERE material_type=$1`;
     if (model) { sql += ` AND model=$2`; params.push(model.trim()); }
     sql += ` ORDER BY model ASC`;
     const { rows } = await db.query(sql, params);
@@ -85,7 +85,7 @@ async function listGrams(req, res, next) {
 async function addGram(req, res, next) {
   try {
     if (req.user.username !== 'admin2') return res.status(403).json({ error: "Ruxsat yo'q" });
-    const { material_type, model, min_gram, max_gram } = req.body;
+    const { material_type, model, min_gram, max_gram, sizes = '' } = req.body;
     if (!material_type || !model || min_gram == null || max_gram == null)
       return res.status(400).json({ error: 'Barcha maydonlar kerak' });
     if (!VALID_MATERIALS.includes(material_type))
@@ -95,12 +95,13 @@ async function addGram(req, res, next) {
       return res.status(400).json({ error: "Min gramm 0 dan katta bo'lishi kerak" });
     if (isNaN(maxInt) || maxInt < minInt)
       return res.status(400).json({ error: "Max gramm min grammdan katta yoki teng bo'lishi kerak" });
+    const sizesStr = String(sizes || '').trim();
     await db.query(
-      `INSERT INTO model_grams (material_type, model, min_gram, max_gram) VALUES ($1,$2,$3,$4)
-       ON CONFLICT (material_type, model) DO UPDATE SET min_gram=$3, max_gram=$4`,
-      [material_type, model.trim(), minInt, maxInt]
+      `INSERT INTO model_grams (material_type, model, min_gram, max_gram, sizes) VALUES ($1,$2,$3,$4,$5)
+       ON CONFLICT (material_type, model) DO UPDATE SET min_gram=$3, max_gram=$4, sizes=$5`,
+      [material_type, model.trim(), minInt, maxInt, sizesStr]
     );
-    res.status(201).json({ ok: true, min_gram: minInt, max_gram: maxInt });
+    res.status(201).json({ ok: true, min_gram: minInt, max_gram: maxInt, sizes: sizesStr });
   } catch (err) { next(err); }
 }
 

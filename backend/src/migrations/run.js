@@ -93,6 +93,7 @@ async function runMigrations() {
   await db.query(`ALTER TABLE model_grams ADD COLUMN IF NOT EXISTS max_gram INTEGER NOT NULL DEFAULT 1`);
   await db.query(`DELETE FROM model_grams mg1 USING model_grams mg2 WHERE mg1.id < mg2.id AND mg1.material_type = mg2.material_type AND mg1.model = mg2.model`);
   await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS model_grams_uniq ON model_grams(material_type, model)`);
+  await db.query(`ALTER TABLE model_grams ADD COLUMN IF NOT EXISTS sizes TEXT DEFAULT ''`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_qr_date            ON quality_records(date)`);
 
   // Force-update admin2 password to arkon_08sifat
