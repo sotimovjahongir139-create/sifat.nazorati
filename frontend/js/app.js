@@ -754,6 +754,7 @@ async function removeUser(id, username) {
 // ── HISTOGRAMMA MODULE ───────────────────────────────────────
 let _histData    = [];
 let _histMat        = null;
+let _histNonAdmin2Razmer = null;
 let _histGrammCache    = {};
 let _histModelsCache   = {};
 let _histSelectedSizes  = [];
@@ -946,6 +947,52 @@ function addHistCustomGram() {
   toast("Gramm qo'shildi!", 's');
 }
 
+function renderNonAdmin2RazmerPick(model) {
+  const box = document.getElementById('hRazmerPickList');
+  if (!box) return;
+  const configs = (_histSizeConfigCache[_histMat] || []).filter(r => r.model === model);
+  if (!configs.length) {
+    box.innerHTML = '<div style="padding:10px 13px;color:var(--muted);font-size:13px">Razmerlar aniqlanmagan</div>';
+    return;
+  }
+  const sizes = [...new Set(configs.map(r => r.size))].sort((a, b) => a - b);
+  box.innerHTML = sizes.map(s =>
+    `<div class="hist-model-item" onclick="selectNonAdmin2Razmer(${s})">${s}</div>`
+  ).join('');
+}
+
+function selectNonAdmin2Razmer(size) {
+  _histNonAdmin2Razmer = size;
+  const model = document.getElementById('hModel').value.trim();
+  const configs = (_histSizeConfigCache[_histMat] || []).filter(r => r.model === model);
+  const cfg = configs.find(r => r.size === size);
+
+  const box = document.getElementById('hRazmerPickList');
+  if (box) {
+    box.querySelectorAll('.hist-model-item').forEach(el => {
+      el.classList.toggle('selected', parseInt(el.textContent) === size);
+    });
+  }
+
+  document.getElementById('hGramWrap').style.display = 'block';
+  const hGramInput = document.getElementById('hGramInput');
+  if (hGramInput) hGramInput.value = '';
+  const hGram = document.getElementById('hGram');
+  if (hGram) hGram.value = '';
+  const hint = document.getElementById('hGramStandartHint');
+  if (hint) hint.textContent = cfg ? `Standart: ${cfg.min_gram}–${cfg.max_gram} gr` : '';
+  document.getElementById('hMiqdorWrap').style.display = 'none';
+  const saveBtn = document.getElementById('histSaveBtn');
+  if (saveBtn) saveBtn.style.display = 'none';
+}
+
+function onHistGramFreeInput() {
+  const hGramInput = document.getElementById('hGramInput');
+  const hGram = document.getElementById('hGram');
+  if (hGram && hGramInput) hGram.value = hGramInput.value;
+  onHistGramChange();
+}
+
 function renderHistModelList(q) {
   const mat = _histMat || 'PU';
   const all = (_histModelsCache[mat] || []).map(r => r.model);
@@ -973,17 +1020,21 @@ function selectHistModelFromList(model) {
     renderHistSizesDisplay();
     renderHistSizeGramsInputs();
   } else if (_histMat) {
-    document.getElementById('hGramWrap').style.display = 'block';
     document.getElementById('hGrammInputWrap').style.display = 'none';
-    const hGram = document.getElementById('hGram');
-    if (hGram) hGram.value = '';
-    const search = document.getElementById('hGrammSearch');
-    if (search) search.value = '';
+    document.getElementById('hGramWrap').style.display = 'none';
     document.getElementById('hMiqdorWrap').style.display = 'none';
     const saveBtn = document.getElementById('histSaveBtn');
     if (saveBtn) saveBtn.style.display = 'none';
-    const cached = (_histModelsCache[_histMat] || []).find(r => r.model === model);
-    renderHistGrammSelectList(cached ? cached.min_gram : null, cached ? cached.max_gram : null, '');
+    _histNonAdmin2Razmer = null;
+    const hGram = document.getElementById('hGram');
+    if (hGram) hGram.value = '';
+    const hGramInput = document.getElementById('hGramInput');
+    if (hGramInput) hGramInput.value = '';
+    const hint = document.getElementById('hGramStandartHint');
+    if (hint) hint.textContent = '';
+    const razmerWrap = document.getElementById('hRazmerPickWrap');
+    if (razmerWrap) razmerWrap.style.display = 'block';
+    renderNonAdmin2RazmerPick(model);
   }
 }
 
@@ -994,10 +1045,13 @@ function setupHistogramma() {
   document.getElementById('hMiqdorWrap').style.display = 'none';
   const hGrammInputWrap = document.getElementById('hGrammInputWrap');
   if (hGrammInputWrap) hGrammInputWrap.style.display = 'none';
-  const hGrammSearch = document.getElementById('hGrammSearch');
-  if (hGrammSearch) hGrammSearch.value = '';
-  const hGrammSelectList = document.getElementById('hGrammSelectList');
-  if (hGrammSelectList) hGrammSelectList.innerHTML = '';
+  const hRazmerPickWrap = document.getElementById('hRazmerPickWrap');
+  if (hRazmerPickWrap) hRazmerPickWrap.style.display = 'none';
+  const hGramInput = document.getElementById('hGramInput');
+  if (hGramInput) hGramInput.value = '';
+  const hGramStandartHint = document.getElementById('hGramStandartHint');
+  if (hGramStandartHint) hGramStandartHint.textContent = '';
+  _histNonAdmin2Razmer = null;
   const hSizeGramsTable = document.getElementById('hSizeGramsTable');
   if (hSizeGramsTable) hSizeGramsTable.style.display = 'none';
   const saveBtn = document.getElementById('histSaveBtn');
@@ -1030,10 +1084,13 @@ function selectHistMat(mat) {
   document.getElementById('hMiqdorWrap').style.display = 'none';
   const hGrammInputWrap = document.getElementById('hGrammInputWrap');
   if (hGrammInputWrap) hGrammInputWrap.style.display = 'none';
-  const hGrammSearch = document.getElementById('hGrammSearch');
-  if (hGrammSearch) hGrammSearch.value = '';
-  const hGrammSelectList2 = document.getElementById('hGrammSelectList');
-  if (hGrammSelectList2) hGrammSelectList2.innerHTML = '';
+  const hRazmerPickWrap2 = document.getElementById('hRazmerPickWrap');
+  if (hRazmerPickWrap2) hRazmerPickWrap2.style.display = 'none';
+  const hGramInput2 = document.getElementById('hGramInput');
+  if (hGramInput2) hGramInput2.value = '';
+  const hGramStandartHint2 = document.getElementById('hGramStandartHint');
+  if (hGramStandartHint2) hGramStandartHint2.textContent = '';
+  _histNonAdmin2Razmer = null;
   const hSizeGramsTable2 = document.getElementById('hSizeGramsTable');
   if (hSizeGramsTable2) hSizeGramsTable2.style.display = 'none';
   const saveBtn = document.getElementById('histSaveBtn');
@@ -1068,9 +1125,13 @@ async function saveHistogramma() {
     toast("Barcha maydonlarni to'ldiring.", 'e');
     return;
   }
+  if (!_histNonAdmin2Razmer) {
+    toast("Razmerni tanlang.", 'e');
+    return;
+  }
 
   try {
-    await apiPostHistogramma({ date, material_type, model, qty, gramm: parseInt(gram) });
+    await apiPostHistogramma({ date, material_type, model, razmer: _histNonAdmin2Razmer, qty, gramm: parseInt(gram) });
     const succEl = document.getElementById('histSuccMsg');
     succEl.style.display = 'flex';
     toast('Saqlandi!', 's');
@@ -1079,8 +1140,8 @@ async function saveHistogramma() {
     _renderHistCharts();
     document.getElementById('hMiqdor').value = '';
     document.getElementById('hGram').value   = '';
-    const cached = (_histModelsCache[material_type] || []).find(r => r.model === model);
-    if (cached) renderHistGrammSelectList(cached.min_gram, cached.max_gram, '');
+    const hGramInput = document.getElementById('hGramInput');
+    if (hGramInput) hGramInput.value = '';
     document.getElementById('hMiqdorWrap').style.display = 'none';
     const saveBtn = document.getElementById('histSaveBtn');
     if (saveBtn) saveBtn.style.display = 'none';

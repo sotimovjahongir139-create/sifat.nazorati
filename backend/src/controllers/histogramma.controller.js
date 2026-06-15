@@ -17,7 +17,7 @@ async function list(req, res, next) {
     const sql = `
       SELECT q.id,
              TO_CHAR(q.date,'YYYY-MM-DD') AS date,
-             q.material_type, q.model, q.gram, q.qty,
+             q.material_type, q.model, q.gram, q.qty, q.gramm, q.razmer,
              q.created_at,
              u.username AS created_by_name
       FROM quality_records q
@@ -34,7 +34,7 @@ async function list(req, res, next) {
 
 async function create(req, res, next) {
   try {
-    const { date, material_type, model, gram = '', qty, gramm } = req.body;
+    const { date, material_type, model, gram = '', qty, gramm, razmer } = req.body;
     if (!date || !material_type || !model || !qty) {
       return res.status(400).json({ error: "Barcha majburiy maydonlarni to'ldiring" });
     }
@@ -48,22 +48,13 @@ async function create(req, res, next) {
     const grammInt = (gramm !== undefined && gramm !== null && gramm !== '') ? parseInt(gramm) : null;
     const effectiveGramm = grammInt !== null ? grammInt
       : (gram && !isNaN(parseInt(gram)) ? parseInt(gram) : null);
-
-    if (req.user.username !== 'admin2' && effectiveGramm !== null) {
-      const { rows: rr } = await db.query(
-        `SELECT min_gram, max_gram FROM model_grams WHERE material_type=$1 AND model=$2`,
-        [material_type, model.trim()]
-      );
-      if (!rr.length) return res.status(400).json({ error: "Bu model uchun gramm diapazoni aniqlanmagan" });
-      if (effectiveGramm < rr[0].min_gram || effectiveGramm > rr[0].max_gram)
-        return res.status(400).json({ error: `Gramm ${rr[0].min_gram}–${rr[0].max_gram} orasida bo'lishi kerak` });
-    }
+    const razmerInt = (razmer !== undefined && razmer !== null && razmer !== '') ? parseInt(razmer) : null;
 
     const { rows } = await db.query(
-      `INSERT INTO quality_records (date, material_type, model, gram, qty, gramm, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
-       RETURNING id, TO_CHAR(date,'YYYY-MM-DD') AS date, material_type, model, gram, qty, gramm, created_at`,
-      [date, material_type, model.trim(), String(gram).trim(), qtyInt, effectiveGramm, req.user.id]
+      `INSERT INTO quality_records (date, material_type, model, gram, qty, gramm, razmer, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       RETURNING id, TO_CHAR(date,'YYYY-MM-DD') AS date, material_type, model, gram, qty, gramm, razmer, created_at`,
+      [date, material_type, model.trim(), String(gram).trim(), qtyInt, effectiveGramm, razmerInt, req.user.id]
     );
     res.status(201).json(rows[0]);
   } catch (err) { next(err); }
