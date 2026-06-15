@@ -132,4 +132,52 @@ async function deleteAll(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, create, deleteByModel, deleteAll, listGrams, addGram };
+async function listSizeGrams(req, res, next) {
+  try {
+    const { material_type } = req.query;
+    if (!material_type) return res.status(400).json({ error: 'material_type kerak' });
+    const { rows } = await db.query(
+      `SELECT model, size, min_gram, max_gram FROM model_size_grams WHERE material_type=$1 ORDER BY model ASC, size ASC`,
+      [material_type]
+    );
+    res.json(rows);
+  } catch (err) { next(err); }
+}
+
+async function saveSizeGrams(req, res, next) {
+  try {
+    if (req.user.username !== 'admin2') return res.status(403).json({ error: "Ruxsat yo'q" });
+    const { material_type, model, sizes } = req.body;
+    if (!material_type || !model || !Array.isArray(sizes) || !sizes.length)
+      return res.status(400).json({ error: 'Barcha maydonlar kerak' });
+    if (!VALID_MATERIALS.includes(material_type))
+      return res.status(400).json({ error: "Noto'g'ri material turi" });
+    for (const s of sizes) {
+      const sInt = parseInt(s.size), minInt = parseInt(s.min_gram), maxInt = parseInt(s.max_gram);
+      if (isNaN(sInt) || sInt < 35 || sInt > 47)
+        return res.status(400).json({ error: `Noto'g'ri razmer: ${s.size}` });
+      if (isNaN(minInt) || minInt <= 0)
+        return res.status(400).json({ error: `Razmer ${sInt}: min gramm 0 dan katta bo'lishi kerak` });
+      if (isNaN(maxInt) || maxInt < minInt)
+        return res.status(400).json({ error: `Razmer ${sInt}: max gramm min grammdan katta bo'lishi kerak` });
+    }
+    await db.query(`DELETE FROM model_size_grams WHERE material_type=$1 AND model=$2`, [material_type, model.trim()]);
+    for (const s of sizes) {
+      await db.query(
+        `INSERT INTO model_size_grams (material_type, model, size, min_gram, max_gram) VALUES ($1,$2,$3,$4,$5)`,
+        [material_type, model.trim(), parseInt(s.size), parseInt(s.min_gram), parseInt(s.max_gram)]
+      );
+    }
+    // Keep model_grams in sync (overall range) for non-admin2 gramm picker
+    const overallMin = Math.min(...sizes.map(s => parseInt(s.min_gram)));
+    const overallMax = Math.max(...sizes.map(s => parseInt(s.max_gram)));
+    await db.query(
+      `INSERT INTO model_grams (material_type, model, min_gram, max_gram) VALUES ($1,$2,$3,$4)
+       ON CONFLICT (material_type, model) DO UPDATE SET min_gram=$3, max_gram=$4`,
+      [material_type, model.trim(), overallMin, overallMax]
+    );
+    res.status(201).json({ ok: true });
+  } catch (err) { next(err); }
+}
+
+module.exports = { list, create, deleteByModel, deleteAll, listGrams, addGram, listSizeGrams, saveSizeGrams };

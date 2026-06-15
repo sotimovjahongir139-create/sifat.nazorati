@@ -128,6 +128,14 @@ async function apiPostModelGram(material_type, model, min_gram, max_gram, sizes)
   return apiFetch('/histogramma/grams', { method: 'POST', body: { material_type, model, min_gram, max_gram, sizes } });
 }
 
+async function apiGetSizeGrams(material_type) {
+  return apiFetch('/histogramma/size-grams?material_type=' + encodeURIComponent(material_type));
+}
+
+async function apiPostSizeGrams(material_type, model, sizes) {
+  return apiFetch('/histogramma/size-grams', { method: 'POST', body: { material_type, model, sizes } });
+}
+
 // ── USERS (admin only) ──────────────────────────────────────
 async function apiGetUsers() {
   return apiFetch('/users');
