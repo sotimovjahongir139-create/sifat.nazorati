@@ -1194,7 +1194,7 @@ function renderCatPage(catId) {
             <div class="thead-t">So'nggi yozuvlar</div>
             <div class="thead-s">${cat.label}</div>
           </div>
-          ${['yamala','orta'].includes(catId) ? `<div class="trend-tabs">
+          ${['qayta','yamala','orta'].includes(catId) ? `<div class="trend-tabs">
             <button class="ttab${(_catTableFilter[catId]||'oylik')==='oylik'?' active':''}" onclick="setCatTableFilter('${catId}','oylik')">Oylik</button>
             <button class="ttab${(_catTableFilter[catId]||'oylik')==='haftalik'?' active':''}" onclick="setCatTableFilter('${catId}','haftalik')">Haftalik</button>
           </div>` : ''}
@@ -1262,7 +1262,7 @@ function renderCatPage(catId) {
 }
 
 // ── CAT TABLE FILTER (yamala, orta) ──────────────────────────
-const _catTableFilter = { yamala: 'oylik', orta: 'oylik' };
+const _catTableFilter = { qayta: 'oylik', yamala: 'oylik', orta: 'oylik' };
 
 function setCatTableFilter(catId, mode) {
   _catTableFilter[catId] = mode;
