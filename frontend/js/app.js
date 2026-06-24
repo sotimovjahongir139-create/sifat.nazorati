@@ -70,9 +70,12 @@ async function goPage(name) {
     await loadData();
     renderAnalytics();
   }
-  if (['qayta','yamala','orta','yamchiq'].includes(name)) {
+  if (['qayta','yamala','orta'].includes(name)) {
     await loadData();
     renderCatPage(name);
+  }
+  if (name === 'yamchiq') {
+    await renderYamchiqPage();
   }
   if (name === 'users') {
     renderUsers();
@@ -582,6 +585,175 @@ function analyticsModelBack() {
 }
 
 // ── CATEGORY PAGES ───────────────────────────────────────────
+// ── YAMCHIQ PAGE ─────────────────────────────────────────────
+let _yamchiqData = [];
+let _yamchiqMode = 'oylik';
+
+async function renderYamchiqPage() {
+  const el = document.getElementById('page-yamchiq');
+  el.innerHTML = '<p style="color:var(--text2);padding:20px">Yuklanmoqda...</p>';
+  try {
+    _yamchiqData = await apiGetYamchiqRecords() || [];
+  } catch (e) {
+    _yamchiqData = [];
+  }
+  _renderYamchiqContent();
+}
+
+function _renderYamchiqContent() {
+  const el     = document.getElementById('page-yamchiq');
+  const accent = '#ff9f43';
+  const jami   = _yamchiqData.reduce((s, r) => s + (r.mahsulot_soni || 0), 0);
+  const qayta  = _yamchiqData.reduce((s, r) => s + (r.qayta_yamalgan || 0), 0);
+
+  el.innerHTML = `
+    <div class="cat-hdr" style="border-left-color:${accent}">
+      <div class="cat-hdr-ico" style="background:${accent}1a;color:${accent}">
+        <i class="fas fa-check-circle" style="font-size:22px"></i>
+      </div>
+      <div>
+        <h2 style="color:${accent}">Yamalab chiqilgan brak</h2>
+        <p>Jami <strong style="color:${accent}">${jami}</strong> ta yamalab chiqilgan</p>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+      <div class="kpi o"><div class="kpi-ico"><i class="fas fa-check-double"></i></div>
+        <div class="kpi-lbl">Jami yamalgan soni</div>
+        <div class="kpi-val">${jami}</div>
+        <div class="kpi-sub">Barcha vaqt davomida</div>
+      </div>
+      <div class="kpi o"><div class="kpi-ico"><i class="fas fa-redo"></i></div>
+        <div class="kpi-lbl">Qayta yamalganlar soni</div>
+        <div class="kpi-val">${qayta}</div>
+        <div class="kpi-sub">Barcha vaqt davomida</div>
+      </div>
+    </div>
+    <div class="fcard" style="margin-bottom:22px;max-width:100%">
+      <div class="succ-msg" id="yamchiqSuccMsg" style="display:none"><i class="fas fa-check-circle"></i>&nbsp; Muvaffaqiyatli saqlandi!</div>
+      <div class="fgrid">
+        <div>
+          <label class="flbl">Sana</label>
+          <input type="date" class="fi" id="yqDate">
+        </div>
+        <div>
+          <label class="flbl">Mahsulot soni</label>
+          <input type="number" class="fi" id="yqMahsulot" min="1" placeholder="Miqdorni kiriting">
+        </div>
+        <div style="grid-column:1/-1">
+          <label class="flbl">Qayta yamalgan padosh</label>
+          <input type="number" class="fi" id="yqQayta" min="0" placeholder="Qayta yamalgan soni">
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <button class="btn-save" onclick="saveYamchiqRecord()"><i class="fas fa-save"></i> Saqlash</button>
+      </div>
+    </div>
+    <div class="ccard">
+      <div class="ch">
+        <div><div class="ch-t">Yamalgan dinamikasi</div><div class="ch-s">Vaqt bo'yicha tahlil</div></div>
+        <div class="trend-tabs">
+          <button class="ttab${_yamchiqMode === 'oylik'    ? ' active' : ''}" id="yqTab-oylik"    onclick="setYamchiqMode('oylik')">Oylik</button>
+          <button class="ttab${_yamchiqMode === 'haftalik' ? ' active' : ''}" id="yqTab-haftalik" onclick="setYamchiqMode('haftalik')">Haftalik</button>
+        </div>
+      </div>
+      <div class="cbox"><canvas id="cYamchiq"></canvas></div>
+    </div>`;
+
+  document.getElementById('yqDate').value = todayLocal();
+  _renderYamchiqChart();
+}
+
+function setYamchiqMode(mode) {
+  _yamchiqMode = mode;
+  ['oylik', 'haftalik'].forEach(m => {
+    const btn = document.getElementById('yqTab-' + m);
+    if (btn) btn.classList.toggle('active', m === mode);
+  });
+  _renderYamchiqChart();
+}
+
+function _renderYamchiqChart() {
+  destroyC('yamchiq');
+  const canvas = document.getElementById('cYamchiq');
+  if (!canvas) return;
+  const data = _yamchiqData;
+  let labels = [], mahsulotVals = [], qaytaVals = [];
+
+  if (_yamchiqMode === 'oylik') {
+    const map = {};
+    data.forEach(r => {
+      const d   = new Date(r.date + 'T00:00:00');
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (!map[key]) map[key] = { m: 0, q: 0 };
+      map[key].m += r.mahsulot_soni || 0;
+      map[key].q += r.qayta_yamalgan || 0;
+    });
+    const months = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
+    const keys = Object.keys(map).sort();
+    labels       = keys.map(k => { const [y, m] = k.split('-'); return months[parseInt(m) - 1] + ' ' + y; });
+    mahsulotVals = keys.map(k => map[k].m);
+    qaytaVals    = keys.map(k => map[k].q);
+  } else {
+    const now   = new Date();
+    const weeks = [];
+    for (let i = 9; i >= 0; i--) {
+      const start = new Date(now);
+      start.setDate(now.getDate() - ((now.getDay() + 6) % 7) - i * 7);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+      weeks.push({ start, end });
+    }
+    labels       = weeks.map(w => w.start.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit' }));
+    mahsulotVals = weeks.map(w => data.filter(r => { const d = new Date(r.date + 'T00:00:00'); return d >= w.start && d <= w.end; }).reduce((s, r) => s + (r.mahsulot_soni || 0), 0));
+    qaytaVals    = weeks.map(w => data.filter(r => { const d = new Date(r.date + 'T00:00:00'); return d >= w.start && d <= w.end; }).reduce((s, r) => s + (r.qayta_yamalgan || 0), 0));
+  }
+
+  charts['yamchiq'] = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Yamalgan', data: mahsulotVals, borderColor: '#ff9f43', backgroundColor: '#ff9f4322', tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: '#ff9f43', borderWidth: 2 },
+        { label: 'Qayta yamalgan', data: qaytaVals, borderColor: '#4f8ef7', backgroundColor: '#4f8ef722', tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: '#4f8ef7', borderWidth: 2 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: '#9da3b4', font: { size: 11 }, boxWidth: 12 } } },
+      scales: {
+        x: { grid: { color: GRID }, ticks: { color: TC, font: { size: 10 } } },
+        y: { grid: { color: GRID }, ticks: { color: TC, font: { size: 10 } }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+async function saveYamchiqRecord() {
+  const date          = document.getElementById('yqDate').value;
+  const mahsulot_soni = parseInt(document.getElementById('yqMahsulot').value);
+  const qayta         = parseInt(document.getElementById('yqQayta').value) || 0;
+
+  if (!date || !mahsulot_soni || mahsulot_soni < 1) {
+    toast("Sana va mahsulot sonini to'ldiring.", 'e');
+    return;
+  }
+
+  try {
+    await apiPostYamchiqRecord({ date, mahsulot_soni, qayta_yamalgan: qayta });
+    const succEl = document.getElementById('yamchiqSuccMsg');
+    if (succEl) { succEl.style.display = 'flex'; setTimeout(() => { succEl.style.display = 'none'; }, 2000); }
+    toast('Saqlandi!', 's');
+    document.getElementById('yqMahsulot').value = '';
+    document.getElementById('yqQayta').value    = '';
+    _yamchiqData = await apiGetYamchiqRecords() || [];
+    _renderYamchiqContent();
+  } catch (err) {
+    toast(err.message || 'Saqlashda xatolik', 'e');
+  }
+}
+
 function renderCatPage(catId) {
   const cat     = CATS.find(c => c.id === catId);
   const allData = getData();

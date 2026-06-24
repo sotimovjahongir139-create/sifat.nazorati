@@ -136,6 +136,17 @@ async function apiPostSizeGrams(material_type, model, sizes) {
   return apiFetch('/histogramma/size-grams', { method: 'POST', body: { material_type, model, sizes } });
 }
 
+// ── YAMCHIQ RECORDS ─────────────────────────────────────────
+async function apiGetYamchiqRecords() {
+  return apiFetch('/yamchiq-records');
+}
+async function apiPostYamchiqRecord(record) {
+  return apiFetch('/yamchiq-records', { method: 'POST', body: record });
+}
+async function apiGetYamchiqSummary() {
+  return apiFetch('/yamchiq-records/summary');
+}
+
 // ── USERS (admin only) ──────────────────────────────────────
 async function apiGetUsers() {
   return apiFetch('/users');

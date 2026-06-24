@@ -8,7 +8,8 @@ router.use('/stats',     require('./stats.routes'));
 router.use('/analytics', require('./stats.routes'));     // backward compat
 router.use('/users',     require('./users.routes'));
 router.use('/reasons',      require('./reasons.routes'));
-router.use('/histogramma', require('./histogramma.routes'));
+router.use('/histogramma',     require('./histogramma.routes'));
+router.use('/yamchiq-records', require('./yamchiq.routes'));
 router.use('/ai',          require('./ai.routes'));
 router.use('/ai-analytics', require('./ai-analytics.routes'));
 

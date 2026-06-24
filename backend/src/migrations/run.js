@@ -108,6 +108,17 @@ async function runMigrations() {
   `);
   await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS model_size_grams_uniq ON model_size_grams(material_type, model, size)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_qr_date            ON quality_records(date)`);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS yamchiq_records (
+      id             SERIAL PRIMARY KEY,
+      date           DATE         NOT NULL,
+      mahsulot_soni  INTEGER      NOT NULL CHECK (mahsulot_soni > 0),
+      qayta_yamalgan INTEGER      NOT NULL DEFAULT 0 CHECK (qayta_yamalgan >= 0),
+      created_by     INTEGER      REFERENCES users(id) ON DELETE SET NULL,
+      created_at     TIMESTAMPTZ  DEFAULT NOW()
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_yq_date ON yamchiq_records(date)`);
 
   // Force-update admin2 password to arkon_08sifat
   const admin2Hash = await bcrypt.hash('arkon_08sifat', 10);
