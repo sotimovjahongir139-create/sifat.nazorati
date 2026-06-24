@@ -2005,12 +2005,50 @@ function _renderHistCharts() {
     };
   }
 
+  function makeGrammBarLabelPlugin(entries) {
+    return {
+      id: 'histGrammLabel',
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        chart.data.datasets.forEach((ds, i) => {
+          chart.getDatasetMeta(i).data.forEach((bar, j) => {
+            const e = entries[j];
+            if (!e || !e.gramm) return;
+            ctx.save();
+            ctx.fillStyle = 'rgba(228,228,248,.9)';
+            ctx.font = 'bold 10px Segoe UI,sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(e.gramm + 'g', bar.x, bar.y - 3);
+            ctx.restore();
+          });
+        });
+      }
+    };
+  }
+
+  const _noDataPlugin = {
+    id: 'histNoData',
+    afterDraw(chart) {
+      if (!chart._noData) return;
+      const { ctx, chartArea } = chart;
+      if (!chartArea) return;
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '13px Segoe UI,sans-serif';
+      ctx.fillText("Ma'lumot kiritilmagan", (chartArea.left + chartArea.right) / 2, (chartArea.top + chartArea.bottom) / 2);
+      ctx.restore();
+    }
+  };
+
   function buildChart(material, canvasId, barColor, borderColor) {
-    const mode     = material === 'PU' ? _histPUMode : _histTEPMode;
-    const filtered = filterByMode(material, mode);
+    const mode        = material === 'PU' ? _histPUMode : _histTEPMode;
+    const modelFilter = material === 'PU' ? _histPUModel : _histTEPModel;
+    const filtered    = filterByMode(material, mode);
     destroyC('hist' + material);
     const canvas = document.getElementById(canvasId);
-    const listEl = document.getElementById(material === 'PU' ? 'histListPU' : 'histListTEP');
 
     if (mode === 'haftalik') {
       const wkDays  = currentWeekDays();
@@ -2037,36 +2075,96 @@ function _renderHistCharts() {
       return;
     }
 
-    const entries = aggregateByModel(filtered);
-    if (entries.length && canvas) {
-      charts['hist' + material] = new Chart(canvas.getContext('2d'), {
+    // If a model is selected → per-size/gramm chart
+    if (modelFilter) {
+      const sizeMap = {};
+      filtered.forEach(r => {
+        const razmer = r.razmer != null && r.razmer !== '' ? String(r.razmer) : null;
+        if (!razmer) return;
+        if (!sizeMap[razmer]) sizeMap[razmer] = { grammTotal: 0, count: 0, qty: 0 };
+        sizeMap[razmer].grammTotal += (parseInt(r.gramm) || 0);
+        sizeMap[razmer].count      += 1;
+        sizeMap[razmer].qty        += (parseInt(r.qty) || 1);
+      });
+
+      const sizes    = Object.keys(sizeMap).map(Number).sort((a, b) => a - b);
+      const sizeEntries = sizes.map(s => ({
+        size:  s,
+        qty:   sizeMap[String(s)].qty,
+        gramm: sizeMap[String(s)].count > 0 ? Math.round(sizeMap[String(s)].grammTotal / sizeMap[String(s)].count) : 0
+      }));
+      const noData = !sizeEntries.length || sizeEntries.every(e => e.gramm === 0);
+
+      if (!canvas) return;
+      const chartInstance = new Chart(canvas.getContext('2d'), {
         type: 'bar',
         data: {
-          labels: entries.map(e => e.model),
+          labels: noData ? [''] : sizeEntries.map(e => String(e.size)),
           datasets: [{
-            data: entries.map(e => e.qty),
-            backgroundColor: barColor,
-            borderColor: borderColor,
-            borderWidth: 1,
-            borderRadius: 6,
-            borderSkipped: false
+            data: noData ? [0] : sizeEntries.map(e => e.gramm),
+            backgroundColor: noData ? 'transparent' : barColor,
+            borderColor:     noData ? 'transparent' : borderColor,
+            borderWidth: 1, borderRadius: 6, borderSkipped: false
           }]
         },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          layout: { padding: { top: 22 } },
-          plugins: { legend: { display: false } },
+          responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              enabled: !noData,
+              callbacks: {
+                title: (items) => `Razmer: ${items[0].label}`,
+                label: (item) => {
+                  const e = sizeEntries[item.dataIndex];
+                  if (!e) return '';
+                  return [`Miqdor: ${e.qty} ta`, `Gramm: ${e.gramm}g`];
+                }
+              }
+            }
+          },
           scales: {
-            x: { grid: { color: GRID }, ticks: { color: TC, font: { size: 9 }, maxRotation: 35 } },
-            y: { grid: { color: GRID }, ticks: { color: TC, font: { size: 10 }, precision: 0 }, beginAtZero: true }
+            x: { grid: { color: GRID }, ticks: { color: TC, font: { size: 9 } } },
+            y: { grid: { color: GRID }, ticks: { color: TC, font: { size: 10 }, precision: 0 }, beginAtZero: true,
+                 title: { display: !noData, text: 'Gramm', color: TC, font: { size: 9 } } }
           }
         },
-        plugins: _isHistAdmin2()
-          ? [makeBarLabelPlugin(entries), makeDeletePlugin(entries, material)]
-          : [makeBarLabelPlugin(entries)]
+        plugins: noData ? [_noDataPlugin] : [makeGrammBarLabelPlugin(sizeEntries), _noDataPlugin]
       });
+      chartInstance._noData = noData;
+      charts['hist' + material] = chartInstance;
+      return;
     }
+
+    // No model selected → show prompt, no bars
+    if (!canvas) return;
+    const promptPlugin = {
+      id: 'histPrompt',
+      afterDraw(chart) {
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '13px Segoe UI,sans-serif';
+        ctx.fillText('Model tanlang', (chartArea.left + chartArea.right) / 2, (chartArea.top + chartArea.bottom) / 2);
+        ctx.restore();
+      }
+    };
+    charts['hist' + material] = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: { labels: [], datasets: [{ data: [], backgroundColor: 'transparent' }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { grid: { color: GRID }, ticks: { color: TC } },
+          y: { grid: { color: GRID }, ticks: { color: TC }, beginAtZero: true }
+        }
+      },
+      plugins: [promptPlugin]
+    });
   }
 
   buildChart('PU',  'cHistPU',  'rgba(79,142,247,.75)', '#4f8ef7');
