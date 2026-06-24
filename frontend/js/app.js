@@ -588,6 +588,7 @@ function analyticsModelBack() {
 // ── YAMCHIQ PAGE ─────────────────────────────────────────────
 let _yamchiqData = [];
 let _yamchiqMode = 'oylik';
+let _yamchiqWeekOffset = 0; // 0=joriy hafta, 1=oldingi hafta
 
 async function renderYamchiqPage() {
   const el = document.getElementById('page-yamchiq');
@@ -673,9 +674,14 @@ function _renderYamchiqContent() {
           <div class="ch-t">Yamalgan dinamikasi</div>
           <div class="ch-s" id="yqWeekRange" style="margin-top:2px"></div>
         </div>
-        <div class="trend-tabs">
-          <button class="ttab${_yamchiqMode === 'haftalik' ? ' active' : ''}" id="yqTab-haftalik" onclick="setYamchiqMode('haftalik')">Haftalik</button>
-          <button class="ttab${_yamchiqMode === 'oylik'    ? ' active' : ''}" id="yqTab-oylik"    onclick="setYamchiqMode('oylik')">Oylik</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div id="yqWeekToggleWrap" style="display:none">
+            <button id="yqWeekToggleBtn" class="ttab" onclick="toggleYamchiqWeek()" style="font-size:11px;padding:4px 10px"></button>
+          </div>
+          <div class="trend-tabs">
+            <button class="ttab${_yamchiqMode === 'haftalik' ? ' active' : ''}" id="yqTab-haftalik" onclick="setYamchiqMode('haftalik')">Haftalik</button>
+            <button class="ttab${_yamchiqMode === 'oylik'    ? ' active' : ''}" id="yqTab-oylik"    onclick="setYamchiqMode('oylik')">Oylik</button>
+          </div>
         </div>
       </div>
       <div class="cbox"><canvas id="cYamchiq"></canvas></div>
@@ -687,6 +693,7 @@ function _renderYamchiqContent() {
 
 function setYamchiqMode(mode) {
   _yamchiqMode = mode;
+  _yamchiqWeekOffset = 0;
   ['oylik', 'haftalik'].forEach(m => {
     const btn = document.getElementById('yqTab-' + m);
     if (btn) btn.classList.toggle('active', m === mode);
@@ -694,20 +701,39 @@ function setYamchiqMode(mode) {
   _renderYamchiqChart();
 }
 
-function _yqWeekBounds(weeksAgo) {
-  const now = new Date();
-  const dow = (now.getDay() + 6) % 7; // 0=Mon
-  const mon = new Date(now);
-  mon.setDate(now.getDate() - dow - weeksAgo * 7);
-  mon.setHours(0, 0, 0, 0);
-  const sun = new Date(mon);
-  sun.setDate(mon.getDate() + 6);
-  sun.setHours(23, 59, 59, 999);
-  return { start: mon, end: sun };
+function toggleYamchiqWeek() {
+  _yamchiqWeekOffset = _yamchiqWeekOffset === 0 ? 1 : 0;
+  _renderYamchiqChart();
+}
+
+function _yqCurrentWeek() {
+  const today = new Date();
+  const day = today.getDay();
+  const diffToMonday = (day === 0) ? -6 : 1 - day;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + diffToMonday);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  return { start: monday, end: sunday };
+}
+
+function _yqPrevWeek() {
+  const { start, end } = _yqCurrentWeek();
+  const prevStart = new Date(start);
+  prevStart.setDate(start.getDate() - 7);
+  const prevEnd = new Date(end);
+  prevEnd.setDate(end.getDate() - 7);
+  return { start: prevStart, end: prevEnd };
 }
 
 function _yqFmtDay(d) {
   return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function _yqLocalDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 function _renderYamchiqChart() {
@@ -720,6 +746,8 @@ function _renderYamchiqChart() {
 
   if (_yamchiqMode === 'oylik') {
     if (weekRange) weekRange.textContent = "Vaqt bo'yicha tahlil";
+    const tw = document.getElementById('yqWeekToggleWrap');
+    if (tw) tw.style.display = 'none';
     const map = {};
     data.forEach(r => {
       const d   = new Date(r.date + 'T00:00:00');
@@ -739,42 +767,37 @@ function _renderYamchiqChart() {
     ];
   } else {
     const DAY_ABBR = ['Du','Se','Ch','Pa','Ju','Sh','Ya'];
-    const cur  = _yqWeekBounds(0);
-    const prev = _yqWeekBounds(1);
+    const week = _yamchiqWeekOffset === 0 ? _yqCurrentWeek() : _yqPrevWeek();
+    const isCurrent = _yamchiqWeekOffset === 0;
 
     if (weekRange) {
-      weekRange.textContent =
-        'Joriy hafta: ' + _yqFmtDay(cur.start)  + ' – ' + _yqFmtDay(cur.end)  +
-        '  |  Oldingi hafta: ' + _yqFmtDay(prev.start) + ' – ' + _yqFmtDay(prev.end);
+      weekRange.textContent = (isCurrent ? 'Joriy hafta: ' : 'Oldingi hafta: ')
+        + _yqFmtDay(week.start) + ' – ' + _yqFmtDay(week.end);
     }
+    const toggleWrap = document.getElementById('yqWeekToggleWrap');
+    const toggleBtn  = document.getElementById('yqWeekToggleBtn');
+    if (toggleWrap) toggleWrap.style.display = '';
+    if (toggleBtn)  toggleBtn.textContent = isCurrent ? '← Oldingi hafta' : 'Joriy hafta →';
 
-    // 7 days of current week as labels
-    labels = [];
-    const curDays = [], prevDays = [];
+    const days = [];
     for (let i = 0; i < 7; i++) {
-      const d = new Date(cur.start);
-      d.setDate(cur.start.getDate() + i);
-      labels.push(DAY_ABBR[i] + ' ' + d.getDate());
-      curDays.push(d);
-
-      const dp = new Date(prev.start);
-      dp.setDate(prev.start.getDate() + i);
-      prevDays.push(dp);
+      const d = new Date(week.start);
+      d.setDate(week.start.getDate() + i);
+      days.push(d);
     }
+    labels = days.map((d, i) => DAY_ABBR[i] + ' ' + d.getDate());
 
     function daySum(day, field) {
-      const ds = day.toISOString().slice(0, 10);
+      const ds = _yqLocalDateStr(day);
       return data.filter(r => r.date === ds).reduce((s, r) => s + (r[field] || 0), 0);
     }
 
-    const curMah  = curDays.map(d  => daySum(d,  'mahsulot_soni'));
-    const curQay  = curDays.map(d  => daySum(d,  'qayta_yamalgan'));
-    const prevMah = prevDays.map(dp => daySum(dp, 'mahsulot_soni'));
+    mahsulotVals = days.map(d => daySum(d, 'mahsulot_soni'));
+    qaytaVals    = days.map(d => daySum(d, 'qayta_yamalgan'));
 
     datasets = [
-      { label: 'Yamalgan (joriy)', data: curMah,  borderColor: '#ff9f43', backgroundColor: '#ff9f4322', tension: 0.35, fill: true,  pointRadius: 3, pointBackgroundColor: '#ff9f43', borderWidth: 2 },
-      { label: 'Qayta yamalgan',   data: curQay,  borderColor: '#4f8ef7', backgroundColor: '#4f8ef722', tension: 0.35, fill: true,  pointRadius: 3, pointBackgroundColor: '#4f8ef7', borderWidth: 2 },
-      { label: 'Oldingi hafta',    data: prevMah, borderColor: '#ff9f4366', backgroundColor: 'transparent', tension: 0.35, fill: false, pointRadius: 2, pointBackgroundColor: '#ff9f4366', borderWidth: 1.5, borderDash: [4, 3] },
+      { label: 'Yamalgan',      data: mahsulotVals, borderColor: '#ff9f43', backgroundColor: '#ff9f4322', tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: '#ff9f43', borderWidth: 2 },
+      { label: 'Qayta yamalgan', data: qaytaVals,   borderColor: '#4f8ef7', backgroundColor: '#4f8ef722', tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: '#4f8ef7', borderWidth: 2 },
     ];
   }
 
