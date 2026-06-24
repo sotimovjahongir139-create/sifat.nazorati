@@ -603,8 +603,17 @@ async function renderYamchiqPage() {
 function _renderYamchiqContent() {
   const el     = document.getElementById('page-yamchiq');
   const accent = '#ff9f43';
+  const now    = new Date();
   const jami   = _yamchiqData.reduce((s, r) => s + (r.mahsulot_soni || 0), 0);
   const qayta  = _yamchiqData.reduce((s, r) => s + (r.qayta_yamalgan || 0), 0);
+  const oyJami  = _yamchiqData.filter(r => {
+    const d = new Date(r.date + 'T00:00:00');
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }).reduce((s, r) => s + (r.mahsulot_soni || 0), 0);
+  const oyQayta = _yamchiqData.filter(r => {
+    const d = new Date(r.date + 'T00:00:00');
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }).reduce((s, r) => s + (r.qayta_yamalgan || 0), 0);
 
   el.innerHTML = `
     <div class="cat-hdr" style="border-left-color:${accent}">
@@ -616,7 +625,7 @@ function _renderYamchiqContent() {
         <p>Jami <strong style="color:${accent}">${jami}</strong> ta yamalab chiqilgan</p>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">
       <div class="kpi o"><div class="kpi-ico"><i class="fas fa-check-double"></i></div>
         <div class="kpi-lbl">Jami yamalgan soni</div>
         <div class="kpi-val">${jami}</div>
@@ -626,6 +635,16 @@ function _renderYamchiqContent() {
         <div class="kpi-lbl">Qayta yamalganlar soni</div>
         <div class="kpi-val">${qayta}</div>
         <div class="kpi-sub">Barcha vaqt davomida</div>
+      </div>
+      <div class="kpi o"><div class="kpi-ico"><i class="fas fa-calendar-alt"></i></div>
+        <div class="kpi-lbl">Bu oy yamalgan soni</div>
+        <div class="kpi-val">${oyJami}</div>
+        <div class="kpi-sub">Joriy oy</div>
+      </div>
+      <div class="kpi o"><div class="kpi-ico"><i class="fas fa-calendar-check"></i></div>
+        <div class="kpi-lbl">Bu oy qayta yamalgan padoshlar</div>
+        <div class="kpi-val">${oyQayta}</div>
+        <div class="kpi-sub">Joriy oy</div>
       </div>
     </div>
     <div class="fcard" style="margin-bottom:22px;max-width:100%">
@@ -650,10 +669,13 @@ function _renderYamchiqContent() {
     </div>
     <div class="ccard">
       <div class="ch">
-        <div><div class="ch-t">Yamalgan dinamikasi</div><div class="ch-s">Vaqt bo'yicha tahlil</div></div>
+        <div>
+          <div class="ch-t">Yamalgan dinamikasi</div>
+          <div class="ch-s" id="yqWeekRange" style="margin-top:2px"></div>
+        </div>
         <div class="trend-tabs">
-          <button class="ttab${_yamchiqMode === 'oylik'    ? ' active' : ''}" id="yqTab-oylik"    onclick="setYamchiqMode('oylik')">Oylik</button>
           <button class="ttab${_yamchiqMode === 'haftalik' ? ' active' : ''}" id="yqTab-haftalik" onclick="setYamchiqMode('haftalik')">Haftalik</button>
+          <button class="ttab${_yamchiqMode === 'oylik'    ? ' active' : ''}" id="yqTab-oylik"    onclick="setYamchiqMode('oylik')">Oylik</button>
         </div>
       </div>
       <div class="cbox"><canvas id="cYamchiq"></canvas></div>
@@ -672,14 +694,32 @@ function setYamchiqMode(mode) {
   _renderYamchiqChart();
 }
 
+function _yqWeekBounds(weeksAgo) {
+  const now = new Date();
+  const dow = (now.getDay() + 6) % 7; // 0=Mon
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - dow - weeksAgo * 7);
+  mon.setHours(0, 0, 0, 0);
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  sun.setHours(23, 59, 59, 999);
+  return { start: mon, end: sun };
+}
+
+function _yqFmtDay(d) {
+  return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
 function _renderYamchiqChart() {
   destroyC('yamchiq');
   const canvas = document.getElementById('cYamchiq');
   if (!canvas) return;
   const data = _yamchiqData;
-  let labels = [], mahsulotVals = [], qaytaVals = [];
+  const weekRange = document.getElementById('yqWeekRange');
+  let labels = [], mahsulotVals = [], qaytaVals = [], datasets = [];
 
   if (_yamchiqMode === 'oylik') {
+    if (weekRange) weekRange.textContent = "Vaqt bo'yicha tahlil";
     const map = {};
     data.forEach(r => {
       const d   = new Date(r.date + 'T00:00:00');
@@ -693,32 +733,54 @@ function _renderYamchiqChart() {
     labels       = keys.map(k => { const [y, m] = k.split('-'); return months[parseInt(m) - 1] + ' ' + y; });
     mahsulotVals = keys.map(k => map[k].m);
     qaytaVals    = keys.map(k => map[k].q);
+    datasets = [
+      { label: 'Yamalgan',      data: mahsulotVals, borderColor: '#ff9f43', backgroundColor: '#ff9f4322', tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: '#ff9f43', borderWidth: 2 },
+      { label: 'Qayta yamalgan', data: qaytaVals,   borderColor: '#4f8ef7', backgroundColor: '#4f8ef722', tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: '#4f8ef7', borderWidth: 2 },
+    ];
   } else {
-    const now   = new Date();
-    const weeks = [];
-    for (let i = 9; i >= 0; i--) {
-      const start = new Date(now);
-      start.setDate(now.getDate() - ((now.getDay() + 6) % 7) - i * 7);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(start);
-      end.setDate(start.getDate() + 6);
-      end.setHours(23, 59, 59, 999);
-      weeks.push({ start, end });
+    const DAY_ABBR = ['Du','Se','Ch','Pa','Ju','Sh','Ya'];
+    const cur  = _yqWeekBounds(0);
+    const prev = _yqWeekBounds(1);
+
+    if (weekRange) {
+      weekRange.textContent =
+        'Joriy hafta: ' + _yqFmtDay(cur.start)  + ' – ' + _yqFmtDay(cur.end)  +
+        '  |  Oldingi hafta: ' + _yqFmtDay(prev.start) + ' – ' + _yqFmtDay(prev.end);
     }
-    labels       = weeks.map(w => w.start.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit' }));
-    mahsulotVals = weeks.map(w => data.filter(r => { const d = new Date(r.date + 'T00:00:00'); return d >= w.start && d <= w.end; }).reduce((s, r) => s + (r.mahsulot_soni || 0), 0));
-    qaytaVals    = weeks.map(w => data.filter(r => { const d = new Date(r.date + 'T00:00:00'); return d >= w.start && d <= w.end; }).reduce((s, r) => s + (r.qayta_yamalgan || 0), 0));
+
+    // 7 days of current week as labels
+    labels = [];
+    const curDays = [], prevDays = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(cur.start);
+      d.setDate(cur.start.getDate() + i);
+      labels.push(DAY_ABBR[i] + ' ' + d.getDate());
+      curDays.push(d);
+
+      const dp = new Date(prev.start);
+      dp.setDate(prev.start.getDate() + i);
+      prevDays.push(dp);
+    }
+
+    function daySum(day, field) {
+      const ds = day.toISOString().slice(0, 10);
+      return data.filter(r => r.date === ds).reduce((s, r) => s + (r[field] || 0), 0);
+    }
+
+    const curMah  = curDays.map(d  => daySum(d,  'mahsulot_soni'));
+    const curQay  = curDays.map(d  => daySum(d,  'qayta_yamalgan'));
+    const prevMah = prevDays.map(dp => daySum(dp, 'mahsulot_soni'));
+
+    datasets = [
+      { label: 'Yamalgan (joriy)', data: curMah,  borderColor: '#ff9f43', backgroundColor: '#ff9f4322', tension: 0.35, fill: true,  pointRadius: 3, pointBackgroundColor: '#ff9f43', borderWidth: 2 },
+      { label: 'Qayta yamalgan',   data: curQay,  borderColor: '#4f8ef7', backgroundColor: '#4f8ef722', tension: 0.35, fill: true,  pointRadius: 3, pointBackgroundColor: '#4f8ef7', borderWidth: 2 },
+      { label: 'Oldingi hafta',    data: prevMah, borderColor: '#ff9f4366', backgroundColor: 'transparent', tension: 0.35, fill: false, pointRadius: 2, pointBackgroundColor: '#ff9f4366', borderWidth: 1.5, borderDash: [4, 3] },
+    ];
   }
 
   charts['yamchiq'] = new Chart(canvas.getContext('2d'), {
     type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Yamalgan', data: mahsulotVals, borderColor: '#ff9f43', backgroundColor: '#ff9f4322', tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: '#ff9f43', borderWidth: 2 },
-        { label: 'Qayta yamalgan', data: qaytaVals, borderColor: '#4f8ef7', backgroundColor: '#4f8ef722', tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: '#4f8ef7', borderWidth: 2 },
-      ]
-    },
+    data: { labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: true, labels: { color: '#9da3b4', font: { size: 11 }, boxWidth: 12 } } },
