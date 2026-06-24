@@ -10,6 +10,7 @@ router.use('/users',     require('./users.routes'));
 router.use('/reasons',      require('./reasons.routes'));
 router.use('/histogramma',     require('./histogramma.routes'));
 router.use('/yamchiq-records', require('./yamchiq.routes'));
+router.use('/bolim',           require('./bolim.routes'));
 router.use('/ai',          require('./ai.routes'));
 router.use('/ai-analytics', require('./ai-analytics.routes'));
 

@@ -79,6 +79,7 @@ const PAGE_META = {
   yamala:   {t:'Yamaladigan brak',                     s:"Tuzatilishi mumkin bo'lgan nuqsonlar"},
   orta:     {t:"O'rta brak",                           s:"O'rta darajadagi nuqsonlar"},
   yamchiq:  {t:'Yamalab chiqilgan brak',               s:'Yamalab chiqilgan nuqsonlar'},
+  bolim:    {t:"Bo'lim ish vaqti",                     s:"Kunlik ish ko'rsatkichlari"},
 };
 
 // ── CHART REGISTRY ──────────────────────────────────────────

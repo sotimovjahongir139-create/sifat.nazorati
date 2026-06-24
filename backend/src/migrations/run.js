@@ -119,6 +119,19 @@ async function runMigrations() {
     )
   `);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_yq_date ON yamchiq_records(date)`);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS bolim_ish_vaqti (
+      id           SERIAL PRIMARY KEY,
+      date         DATE    NOT NULL,
+      dan          INTEGER,
+      gacha        INTEGER,
+      hodim_soni   INTEGER,
+      padosh_soni  INTEGER,
+      created_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at   TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS bolim_date_uniq ON bolim_ish_vaqti(date)`);
 
   // Force-update admin2 password to arkon_08sifat
   const admin2Hash = await bcrypt.hash('arkon_08sifat', 10);

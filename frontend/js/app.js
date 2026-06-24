@@ -84,6 +84,9 @@ async function goPage(name) {
     setupHistogramma();
     renderHistogramma();
   }
+  if (name === 'bolim') {
+    await renderBolimPage();
+  }
 }
 
 // ── MODEL PICKER ─────────────────────────────────────────────
@@ -585,6 +588,281 @@ function analyticsModelBack() {
 }
 
 // ── CATEGORY PAGES ───────────────────────────────────────────
+// ── BOLIM ISH VAQTI PAGE ─────────────────────────────────────
+let _bolimData = [];
+let _bolimMode = 'haftalik';
+let _bolimWeekOffset = 0;
+
+function _blTimeOpts(sel) {
+  let s = '<option value="">— Tanlang —</option>';
+  for (let h = 0; h < 24; h++) s += `<option value="${h}"${sel === h ? ' selected' : ''}>${h}:00</option>`;
+  return s;
+}
+
+async function renderBolimPage() {
+  const el = document.getElementById('page-bolim');
+  el.innerHTML = '<p style="color:var(--text2);padding:20px">Yuklanmoqda...</p>';
+  try { _bolimData = await apiGetBolim() || []; } catch { _bolimData = []; }
+  _renderBolimContent();
+}
+
+function _renderBolimContent() {
+  const el     = document.getElementById('page-bolim');
+  const now    = new Date();
+  const today  = todayLocal();
+  const todayRec = _bolimData.find(r => r.date === today) || {};
+
+  // KPI: current month
+  const monthData = _bolimData.filter(r => {
+    const d = new Date(r.date + 'T00:00:00');
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  });
+  const oylikIshSoati = monthData.reduce((s, r) => s + (r.ish_soati != null ? Number(r.ish_soati) : 0), 0);
+  const oylikPadosh   = monthData.reduce((s, r) => s + (r.padosh_soni != null ? Number(r.padosh_soni) : 0), 0);
+  const personHours   = monthData.reduce((s, r) => {
+    const ish = r.ish_soati != null ? Number(r.ish_soati) : 0;
+    const hod = r.hodim_soni != null ? Number(r.hodim_soni) : 0;
+    return s + ish * hod;
+  }, 0);
+  const kishiBoshigaOy = personHours > 0 ? Math.round(oylikPadosh / personHours) : 0;
+
+  el.innerHTML = `
+    <div class="cat-hdr" style="border-left-color:#4f8ef7">
+      <div class="cat-hdr-ico" style="background:#4f8ef71a;color:#4f8ef7">
+        <i class="fas fa-clock" style="font-size:22px"></i>
+      </div>
+      <div>
+        <h2 style="color:#4f8ef7">Bo'lim ish vaqti</h2>
+        <p>Kunlik ish ko'rsatkichlari va samaradorlik</p>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px">
+      <div class="kpi b"><div class="kpi-ico"><i class="fas fa-hourglass-half"></i></div>
+        <div class="kpi-lbl">Oylik ish soati</div>
+        <div class="kpi-val">${oylikIshSoati}</div>
+        <div class="kpi-sub">Joriy oy jami</div>
+      </div>
+      <div class="kpi b"><div class="kpi-ico"><i class="fas fa-layer-group"></i></div>
+        <div class="kpi-lbl">Oylik sifat nazoratidan o'tgan padosh</div>
+        <div class="kpi-val">${oylikPadosh}</div>
+        <div class="kpi-sub">Joriy oy jami</div>
+      </div>
+      <div class="kpi b"><div class="kpi-ico"><i class="fas fa-user-clock"></i></div>
+        <div class="kpi-lbl">Kishi boshiga (oylik)</div>
+        <div class="kpi-val">${kishiBoshigaOy}</div>
+        <div class="kpi-sub">Padosh / soat / kishi</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px">
+      <div class="fcard" style="max-width:100%">
+        <div class="succ-msg" id="blSucc1" style="display:none"><i class="fas fa-check-circle"></i>&nbsp; Saqlandi!</div>
+        <div style="font-size:13px;font-weight:700;color:#4f8ef7;margin-bottom:14px"><i class="fas fa-clock" style="margin-right:6px"></i>Ish vaqti</div>
+        <label class="flbl">Sana</label>
+        <input type="date" class="fi" id="blDate" style="margin-bottom:12px">
+        <label class="flbl">Dan (soat)</label>
+        <select class="fi" id="blDan" style="margin-bottom:12px">${_blTimeOpts(todayRec.dan != null ? Number(todayRec.dan) : -1)}</select>
+        <label class="flbl">Gacha (soat)</label>
+        <select class="fi" id="blGacha" style="margin-bottom:16px">${_blTimeOpts(todayRec.gacha != null ? Number(todayRec.gacha) : -1)}</select>
+        <div id="blIshSoatiHint" style="font-size:12px;color:var(--muted);margin-bottom:12px"></div>
+        <button class="btn-save" onclick="saveBolimIshVaqti()"><i class="fas fa-save"></i> Saqlash</button>
+      </div>
+      <div class="fcard" style="max-width:100%">
+        <div class="succ-msg" id="blSucc2" style="display:none"><i class="fas fa-check-circle"></i>&nbsp; Saqlandi!</div>
+        <div style="font-size:13px;font-weight:700;color:#4f8ef7;margin-bottom:14px"><i class="fas fa-users" style="margin-right:6px"></i>Hodim soni</div>
+        <label class="flbl">Hodimlar soni</label>
+        <input type="number" class="fi" id="blHodim" min="1" placeholder="Masalan: 2" value="${todayRec.hodim_soni != null ? todayRec.hodim_soni : ''}" style="margin-bottom:16px">
+        <button class="btn-save" onclick="saveBolimHodim()"><i class="fas fa-save"></i> Saqlash</button>
+      </div>
+      <div class="fcard" style="max-width:100%">
+        <div class="succ-msg" id="blSucc3" style="display:none"><i class="fas fa-check-circle"></i>&nbsp; Saqlandi!</div>
+        <div style="font-size:13px;font-weight:700;color:#4f8ef7;margin-bottom:14px"><i class="fas fa-layer-group" style="margin-right:6px"></i>Sifat nazoratidan o'tgan padosh</div>
+        <label class="flbl">Padosh miqdori</label>
+        <input type="number" class="fi" id="blPadosh" min="0" placeholder="Masalan: 800" value="${todayRec.padosh_soni != null ? todayRec.padosh_soni : ''}" style="margin-bottom:16px">
+        <button class="btn-save" onclick="saveBolimPadosh()"><i class="fas fa-save"></i> Saqlash</button>
+      </div>
+    </div>
+
+    <div class="ccard">
+      <div class="ch">
+        <div>
+          <div class="ch-t">Ish ko'rsatkichlari dinamikasi</div>
+          <div class="ch-s" id="blWeekRange" style="margin-top:2px"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div id="blWeekToggleWrap" style="display:none">
+            <button id="blWeekToggleBtn" class="ttab" onclick="toggleBolimWeek()" style="font-size:11px;padding:4px 10px"></button>
+          </div>
+          <div class="trend-tabs">
+            <button class="ttab${_bolimMode === 'haftalik' ? ' active' : ''}" id="blTab-haftalik" onclick="setBolimMode('haftalik')">Haftalik</button>
+            <button class="ttab${_bolimMode === 'oylik'    ? ' active' : ''}" id="blTab-oylik"    onclick="setBolimMode('oylik')">Oylik</button>
+          </div>
+        </div>
+      </div>
+      <div class="cbox"><canvas id="cBolim"></canvas></div>
+    </div>`;
+
+  document.getElementById('blDate').value = today;
+  document.getElementById('blDan').addEventListener('change', _updateBlIshSoatiHint);
+  document.getElementById('blGacha').addEventListener('change', _updateBlIshSoatiHint);
+  _updateBlIshSoatiHint();
+  _renderBolimChart();
+}
+
+function _updateBlIshSoatiHint() {
+  const dan   = parseInt(document.getElementById('blDan')?.value);
+  const gacha = parseInt(document.getElementById('blGacha')?.value);
+  const hint  = document.getElementById('blIshSoatiHint');
+  if (!hint) return;
+  if (!isNaN(dan) && !isNaN(gacha) && gacha > dan) {
+    hint.textContent = `Ish soati: ${gacha - dan} soat`;
+  } else {
+    hint.textContent = '';
+  }
+}
+
+function _blShowSucc(id) {
+  const el = document.getElementById(id);
+  if (el) { el.style.display = 'flex'; setTimeout(() => { el.style.display = 'none'; }, 2000); }
+}
+
+async function saveBolimIshVaqti() {
+  const date  = document.getElementById('blDate').value;
+  const dan   = document.getElementById('blDan').value;
+  const gacha = document.getElementById('blGacha').value;
+  if (!date || dan === '' || gacha === '') { toast('Sana, Dan va Gacha ni tanlang.', 'e'); return; }
+  if (parseInt(gacha) <= parseInt(dan)) { toast("'Gacha' 'Dan'dan katta bo'lishi kerak.", 'e'); return; }
+  try {
+    await apiPostBolim({ date, dan: parseInt(dan), gacha: parseInt(gacha) });
+    _blShowSucc('blSucc1');
+    toast('Saqlandi!', 's');
+    _bolimData = await apiGetBolim() || [];
+    _renderBolimContent();
+  } catch (err) { toast(err.message || 'Xatolik', 'e'); }
+}
+
+async function saveBolimHodim() {
+  const date  = document.getElementById('blDate').value;
+  const hodim = parseInt(document.getElementById('blHodim').value);
+  if (!date || !hodim || hodim < 1) { toast("Sana va hodimlar sonini kiriting.", 'e'); return; }
+  try {
+    await apiPostBolim({ date, hodim_soni: hodim });
+    _blShowSucc('blSucc2');
+    toast('Saqlandi!', 's');
+    _bolimData = await apiGetBolim() || [];
+    _renderBolimContent();
+  } catch (err) { toast(err.message || 'Xatolik', 'e'); }
+}
+
+async function saveBolimPadosh() {
+  const date   = document.getElementById('blDate').value;
+  const padosh = parseInt(document.getElementById('blPadosh').value);
+  if (!date || padosh == null || isNaN(padosh) || padosh < 0) { toast("Sana va padosh miqdorini kiriting.", 'e'); return; }
+  try {
+    await apiPostBolim({ date, padosh_soni: padosh });
+    _blShowSucc('blSucc3');
+    toast('Saqlandi!', 's');
+    _bolimData = await apiGetBolim() || [];
+    _renderBolimContent();
+  } catch (err) { toast(err.message || 'Xatolik', 'e'); }
+}
+
+function setBolimMode(mode) {
+  _bolimMode = mode;
+  _bolimWeekOffset = 0;
+  ['haftalik', 'oylik'].forEach(m => {
+    const btn = document.getElementById('blTab-' + m);
+    if (btn) btn.classList.toggle('active', m === mode);
+  });
+  _renderBolimChart();
+}
+
+function toggleBolimWeek() {
+  _bolimWeekOffset = _bolimWeekOffset === 0 ? 1 : 0;
+  _renderBolimChart();
+}
+
+function _renderBolimChart() {
+  destroyC('bolim');
+  const canvas = document.getElementById('cBolim');
+  if (!canvas) return;
+  const data = _bolimData;
+  const weekRange = document.getElementById('blWeekRange');
+  const toggleWrap = document.getElementById('blWeekToggleWrap');
+  const toggleBtn  = document.getElementById('blWeekToggleBtn');
+  let labels = [], ishSoatiVals = [], kishiBoshigaVals = [];
+
+  if (_bolimMode === 'oylik') {
+    if (weekRange) weekRange.textContent = "Oylik tahlil";
+    if (toggleWrap) toggleWrap.style.display = 'none';
+    const map = {};
+    data.forEach(r => {
+      const d   = new Date(r.date + 'T00:00:00');
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (!map[key]) map[key] = { ish: 0, kb: [], personH: 0, padosh: 0 };
+      if (r.ish_soati != null) map[key].ish += Number(r.ish_soati);
+      if (r.ish_soati != null && r.hodim_soni != null) {
+        map[key].personH += Number(r.ish_soati) * Number(r.hodim_soni);
+      }
+      if (r.padosh_soni != null) map[key].padosh += Number(r.padosh_soni);
+    });
+    const months = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
+    const keys = Object.keys(map).sort();
+    labels          = keys.map(k => { const [y, m] = k.split('-'); return months[parseInt(m) - 1] + ' ' + y; });
+    ishSoatiVals    = keys.map(k => map[k].ish);
+    kishiBoshigaVals = keys.map(k => map[k].personH > 0 ? Math.round(map[k].padosh / map[k].personH) : 0);
+  } else {
+    const DAY_ABBR = ['Du','Se','Ch','Pa','Ju','Sh','Ya'];
+    const week     = _bolimWeekOffset === 0 ? _yqCurrentWeek() : _yqPrevWeek();
+    const isCur    = _bolimWeekOffset === 0;
+    if (weekRange) weekRange.textContent = (isCur ? 'Joriy hafta: ' : 'Oldingi hafta: ') + _yqFmtDay(week.start) + ' – ' + _yqFmtDay(week.end);
+    if (toggleWrap) toggleWrap.style.display = '';
+    if (toggleBtn)  toggleBtn.textContent = isCur ? '← Oldingi hafta' : 'Joriy hafta →';
+
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(week.start);
+      d.setDate(week.start.getDate() + i);
+      days.push(d);
+    }
+    labels = days.map((d, i) => DAY_ABBR[i] + ' ' + d.getDate());
+
+    ishSoatiVals    = days.map(d => {
+      const ds  = _yqLocalDateStr(d);
+      const rec = data.find(r => r.date === ds);
+      return rec && rec.ish_soati != null ? Number(rec.ish_soati) : 0;
+    });
+    kishiBoshigaVals = days.map(d => {
+      const ds  = _yqLocalDateStr(d);
+      const rec = data.find(r => r.date === ds);
+      return rec && rec.kishi_boshiga != null ? Number(rec.kishi_boshiga) : 0;
+    });
+  }
+
+  charts['bolim'] = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Ish soati', data: ishSoatiVals,     borderColor: '#4f8ef7', backgroundColor: '#4f8ef722', tension: 0.35, fill: true,  pointRadius: 3, pointBackgroundColor: '#4f8ef7', borderWidth: 2, yAxisID: 'y' },
+        { label: 'Kishi boshiga padosh', data: kishiBoshigaVals, borderColor: '#ff9f43', backgroundColor: '#ff9f4322', tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: '#ff9f43', borderWidth: 2, yAxisID: 'y1' },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: '#9da3b4', font: { size: 11 }, boxWidth: 12 } } },
+      scales: {
+        x:  { grid: { color: GRID }, ticks: { color: TC, font: { size: 10 } } },
+        y:  { grid: { color: GRID }, ticks: { color: TC, font: { size: 10 } }, beginAtZero: true, position: 'left',
+              title: { display: true, text: 'Ish soati', color: '#4f8ef7', font: { size: 10 } } },
+        y1: { grid: { display: false }, ticks: { color: TC, font: { size: 10 } }, beginAtZero: true, position: 'right',
+              title: { display: true, text: 'Kishi boshiga', color: '#ff9f43', font: { size: 10 } } },
+      }
+    }
+  });
+}
+
 // ── YAMCHIQ PAGE ─────────────────────────────────────────────
 let _yamchiqData = [];
 let _yamchiqMode = 'oylik';
