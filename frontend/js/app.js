@@ -867,6 +867,12 @@ function _renderBolimChart() {
 let _yamchiqData = [];
 let _yamchiqMode = 'oylik';
 let _yamchiqWeekOffset = 0; // 0=joriy hafta, 1=oldingi hafta
+let _yamchiqTableFilter = 'oylik';
+
+function setYamchiqTableFilter(mode) {
+  _yamchiqTableFilter = mode;
+  _renderYamchiqContent();
+}
 
 async function renderYamchiqPage() {
   const el = document.getElementById('page-yamchiq');
@@ -946,6 +952,22 @@ function _renderYamchiqContent() {
         <button class="btn-save" onclick="saveYamchiqRecord()"><i class="fas fa-save"></i> Saqlash</button>
       </div>
     </div>
+    <div class="tcard" style="margin-bottom:22px">
+      <div class="thead">
+        <div>
+          <div class="thead-t">So'nggi yozuvlar</div>
+          <div class="thead-s">Yamalab chiqilgan brak</div>
+        </div>
+        <div class="trend-tabs">
+          <button class="ttab${_yamchiqTableFilter==='oylik'?' active':''}" onclick="setYamchiqTableFilter('oylik')">Oylik</button>
+          <button class="ttab${_yamchiqTableFilter==='haftalik'?' active':''}" onclick="setYamchiqTableFilter('haftalik')">Haftalik</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Sana</th><th>Mahsulot soni</th><th>Qayta yamalgan padosh</th></tr></thead>
+        <tbody id="yqRecTb"></tbody>
+      </table>
+    </div>
     <div class="ccard">
       <div class="ch">
         <div>
@@ -966,6 +988,19 @@ function _renderYamchiqContent() {
     </div>`;
 
   document.getElementById('yqDate').value = todayLocal();
+
+  // Fill So'nggi yozuvlar table
+  const yqFiltered = _yamchiqTableFilter === 'haftalik'
+    ? _yamchiqData.filter(r => _dateInThisWeek(r.date))
+    : _yamchiqData.filter(r => _dateInThisMonth(r.date));
+  const yqRecent = [...yqFiltered].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 50);
+  const yqTb = document.getElementById('yqRecTb');
+  if (yqTb) {
+    yqTb.innerHTML = yqRecent.length
+      ? yqRecent.map(r => `<tr><td>${fmtDate(r.date)}</td><td>${r.mahsulot_soni ?? '—'}</td><td>${r.qayta_yamalgan ?? '—'}</td></tr>`).join('')
+      : `<tr><td colspan="3" class="empty">Bu davrda yozuvlar yo'q</td></tr>`;
+  }
+
   _renderYamchiqChart();
 }
 
@@ -1154,10 +1189,16 @@ function renderCatPage(catId) {
     </div>
     <div class="g2" style="margin-bottom:16px">
       <div class="tcard" style="margin-bottom:0">
-        <div class="thead"><div>
-          <div class="thead-t">So'nggi yozuvlar</div>
-          <div class="thead-s">${cat.label}</div>
-        </div></div>
+        <div class="thead">
+          <div>
+            <div class="thead-t">So'nggi yozuvlar</div>
+            <div class="thead-s">${cat.label}</div>
+          </div>
+          ${['yamala','orta'].includes(catId) ? `<div class="trend-tabs">
+            <button class="ttab${(_catTableFilter[catId]||'oylik')==='oylik'?' active':''}" onclick="setCatTableFilter('${catId}','oylik')">Oylik</button>
+            <button class="ttab${(_catTableFilter[catId]||'oylik')==='haftalik'?' active':''}" onclick="setCatTableFilter('${catId}','haftalik')">Haftalik</button>
+          </div>` : ''}
+        </div>
         <table>
           <thead><tr><th>Sana</th><th>Model</th><th>Nuqson sababi</th><th>Miqdor</th></tr></thead>
           <tbody id="catTb-${catId}"></tbody>
@@ -1173,10 +1214,18 @@ function renderCatPage(catId) {
       <ul class="rlist" id="catRnk-${catId}"></ul>
     </div>`;
 
-  const recent = [...data].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 8);
+  const _ctf = _catTableFilter[catId];
+  let recent;
+  if (_ctf === 'haftalik') {
+    recent = [...data].filter(r => _dateInThisWeek(r.date)).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 50);
+  } else if (_ctf === 'oylik') {
+    recent = [...data].filter(r => _dateInThisMonth(r.date)).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 50);
+  } else {
+    recent = [...data].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 8);
+  }
   const tb = document.getElementById('catTb-' + catId);
   if (!recent.length) {
-    tb.innerHTML = `<tr><td colspan="4" class="empty">Bu turkumda yozuvlar yo'q.</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="4" class="empty">${_ctf ? "Bu davrda yozuvlar yo'q" : "Bu turkumda yozuvlar yo'q."}</td></tr>`;
   } else {
     tb.innerHTML = recent.map(r => `
       <tr>
@@ -1210,6 +1259,34 @@ function renderCatPage(catId) {
     document.getElementById('catRnk-' + catId).innerHTML =
       `<li style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Yozuvlar yo'q</li>`;
   }
+}
+
+// ── CAT TABLE FILTER (yamala, orta) ──────────────────────────
+const _catTableFilter = { yamala: 'oylik', orta: 'oylik' };
+
+function setCatTableFilter(catId, mode) {
+  _catTableFilter[catId] = mode;
+  renderCatPage(catId);
+}
+
+function _dateInThisWeek(dateStr) {
+  const date = new Date(dateStr + 'T00:00:00');
+  const today = new Date();
+  const day = today.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + diffToMonday);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  return date >= monday && date <= sunday;
+}
+
+function _dateInThisMonth(dateStr) {
+  const date = new Date(dateStr + 'T00:00:00');
+  const today = new Date();
+  return date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
 }
 
 // ── USERS PAGE (admin only) ──────────────────────────────────
