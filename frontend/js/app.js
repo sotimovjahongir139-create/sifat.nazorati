@@ -944,8 +944,8 @@ function _renderYamchiqContent() {
           <input type="number" class="fi" id="yqMahsulot" min="1" placeholder="Miqdorni kiriting">
         </div>
         <div style="grid-column:1/-1">
-          <label class="flbl">Qayta yamalgan padosh</label>
-          <input type="number" class="fi" id="yqQayta" min="0" placeholder="Qayta yamalgan soni">
+          <label class="flbl">Qayta yamaladigan padosh</label>
+          <input type="number" class="fi" id="yqQayta" min="0" placeholder="Qayta yamaladigan soni">
         </div>
       </div>
       <div style="margin-top:16px">

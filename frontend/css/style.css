@@ -278,3 +278,13 @@ textarea.fi{resize:vertical;min-height:88px}
   .finp,.fi{font-size:16px}
   .btn-login{font-size:16px;padding:16px}
 }
+@media(max-width:768px){
+  /* Yamchiq: 4-col KPI → 2×2 grid */
+  #page-yamchiq>div[style*="repeat(4"]{grid-template-columns:1fr 1fr !important}
+  /* Bolim: 3-col KPI cards + 3-col form cards → single column stack */
+  #page-bolim>div[style*="repeat(3"]{grid-template-columns:1fr !important}
+  /* KPI labels: allow text to wrap, no clipping */
+  #page-yamchiq .kpi-lbl,#page-bolim .kpi-lbl{white-space:normal}
+  /* KPI cards: right padding so label text doesn't run under the absolute-positioned icon */
+  #page-yamchiq .kpi,#page-bolim .kpi{padding-right:58px}
+}
