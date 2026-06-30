@@ -939,7 +939,9 @@ function _renderYamchiqContent() {
         <label class="flbl">Sana</label>
         <input type="date" class="fi" id="yqDate" style="margin-bottom:12px">
         <label class="flbl">Mahsulot soni</label>
-        <input type="number" class="fi" id="yqMahsulot" min="1" placeholder="Miqdorni kiriting" style="margin-bottom:16px">
+        <input type="number" class="fi" id="yqMahsulot" min="1" placeholder="Miqdorni kiriting" style="margin-bottom:12px">
+        <label class="flbl">Izoh</label>
+        <textarea class="fi" id="yqIzoh" placeholder="Izoh qoldiring (ixtiyoriy)" rows="2" style="margin-bottom:16px;resize:vertical"></textarea>
         <button class="btn-save" onclick="saveYamchiqRecord()"><i class="fas fa-save"></i> Saqlash</button>
       </div>
       <div class="fcard" style="max-width:100%">
@@ -948,7 +950,9 @@ function _renderYamchiqContent() {
         <label class="flbl">Sana</label>
         <input type="date" class="fi" id="yqDate2" style="margin-bottom:12px">
         <label class="flbl">Qayta yamaladigan padosh</label>
-        <input type="number" class="fi" id="yqQayta" min="0" placeholder="Qayta yamaladigan soni" style="margin-bottom:16px">
+        <input type="number" class="fi" id="yqQayta" min="0" placeholder="Qayta yamaladigan soni" style="margin-bottom:12px">
+        <label class="flbl">Izoh</label>
+        <textarea class="fi" id="yqIzoh2" placeholder="Izoh qoldiring (ixtiyoriy)" rows="2" style="margin-bottom:16px;resize:vertical"></textarea>
         <button class="btn-save" onclick="saveQaytaPadosh()"><i class="fas fa-save"></i> Saqlash</button>
       </div>
     </div>
@@ -1132,6 +1136,7 @@ function _renderYamchiqChart() {
 async function saveYamchiqRecord() {
   const date          = document.getElementById('yqDate').value;
   const mahsulot_soni = parseInt(document.getElementById('yqMahsulot').value);
+  const izoh          = (document.getElementById('yqIzoh')?.value || '').trim();
 
   if (!date || !mahsulot_soni || mahsulot_soni < 1) {
     toast("Sana va mahsulot sonini to'ldiring.", 'e');
@@ -1139,11 +1144,12 @@ async function saveYamchiqRecord() {
   }
 
   try {
-    await apiPostYamchiqRecord({ date, mahsulot_soni, qayta_yamalgan: 0 });
+    await apiPostYamchiqRecord({ date, mahsulot_soni, qayta_yamalgan: 0, izoh: izoh || null });
     const succEl = document.getElementById('yamchiqSuccMsg');
     if (succEl) { succEl.style.display = 'flex'; setTimeout(() => { succEl.style.display = 'none'; }, 2000); }
     toast('Saqlandi!', 's');
     document.getElementById('yqMahsulot').value = '';
+    if (document.getElementById('yqIzoh')) document.getElementById('yqIzoh').value = '';
     _yamchiqData = await apiGetYamchiqRecords() || [];
     _renderYamchiqContent();
   } catch (err) {
@@ -1154,6 +1160,7 @@ async function saveYamchiqRecord() {
 async function saveQaytaPadosh() {
   const date       = document.getElementById('yqDate2').value;
   const qayta_soni = parseInt(document.getElementById('yqQayta').value);
+  const izoh       = (document.getElementById('yqIzoh2')?.value || '').trim();
 
   if (!date || isNaN(qayta_soni) || qayta_soni < 0) {
     toast("Sana va miqdorni kiriting.", 'e');
@@ -1161,11 +1168,12 @@ async function saveQaytaPadosh() {
   }
 
   try {
-    await apiPostQaytaPadosh({ date, qayta_soni });
+    await apiPostQaytaPadosh({ date, qayta_soni, izoh: izoh || null });
     const succEl = document.getElementById('qaytaSuccMsg');
     if (succEl) { succEl.style.display = 'flex'; setTimeout(() => { succEl.style.display = 'none'; }, 2000); }
     toast('Saqlandi!', 's');
     document.getElementById('yqQayta').value = '';
+    if (document.getElementById('yqIzoh2')) document.getElementById('yqIzoh2').value = '';
   } catch (err) {
     toast(err.message || 'Saqlashda xatolik', 'e');
   }

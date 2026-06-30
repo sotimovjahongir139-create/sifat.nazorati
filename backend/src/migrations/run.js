@@ -143,6 +143,8 @@ async function runMigrations() {
     )
   `);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_qp_date ON qayta_padosh_records(date)`);
+  await db.query(`ALTER TABLE yamchiq_records      ADD COLUMN IF NOT EXISTS izoh TEXT DEFAULT NULL`);
+  await db.query(`ALTER TABLE qayta_padosh_records ADD COLUMN IF NOT EXISTS izoh TEXT DEFAULT NULL`);
 
   // Force-update admin2 password to arkon_08sifat
   const admin2Hash = await bcrypt.hash('arkon_08sifat', 10);

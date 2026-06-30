@@ -12,7 +12,7 @@ async function list(req, res, next) {
 
 async function create(req, res, next) {
   try {
-    const { date, qayta_soni } = req.body;
+    const { date, qayta_soni, izoh } = req.body;
     if (!date || qayta_soni == null) {
       return res.status(400).json({ error: "Sana va miqdor kerak" });
     }
@@ -20,11 +20,12 @@ async function create(req, res, next) {
     if (isNaN(soniInt) || soniInt < 0) {
       return res.status(400).json({ error: "Miqdor 0 dan katta bo'lishi kerak" });
     }
+    const izohVal = izoh ? String(izoh).trim() || null : null;
     const { rows } = await db.query(
-      `INSERT INTO qayta_padosh_records (date, qayta_soni, created_by)
-       VALUES ($1,$2,$3)
-       RETURNING id, TO_CHAR(date,'YYYY-MM-DD') AS date, qayta_soni, created_at`,
-      [date, soniInt, req.user.id]
+      `INSERT INTO qayta_padosh_records (date, qayta_soni, izoh, created_by)
+       VALUES ($1,$2,$3,$4)
+       RETURNING id, TO_CHAR(date,'YYYY-MM-DD') AS date, qayta_soni, izoh, created_at`,
+      [date, soniInt, izohVal, req.user.id]
     );
     res.status(201).json(rows[0]);
   } catch (err) { next(err); }
