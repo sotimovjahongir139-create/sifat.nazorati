@@ -133,6 +133,17 @@ async function runMigrations() {
   `);
   await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS bolim_date_uniq ON bolim_ish_vaqti(date)`);
 
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS qayta_padosh_records (
+      id          SERIAL PRIMARY KEY,
+      date        DATE    NOT NULL,
+      qayta_soni  INTEGER NOT NULL CHECK (qayta_soni >= 0),
+      created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at  TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_qp_date ON qayta_padosh_records(date)`);
+
   // Force-update admin2 password to arkon_08sifat
   const admin2Hash = await bcrypt.hash('arkon_08sifat', 10);
   await db.query(`UPDATE users SET password_hash=$1 WHERE username='admin2'`, [admin2Hash]);

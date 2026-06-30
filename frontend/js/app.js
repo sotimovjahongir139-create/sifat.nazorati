@@ -932,24 +932,24 @@ function _renderYamchiqContent() {
         <div class="kpi-sub">Joriy oy</div>
       </div>
     </div>
-    <div class="fcard" style="margin-bottom:22px;max-width:100%">
-      <div class="succ-msg" id="yamchiqSuccMsg" style="display:none"><i class="fas fa-check-circle"></i>&nbsp; Muvaffaqiyatli saqlandi!</div>
-      <div class="fgrid">
-        <div>
-          <label class="flbl">Sana</label>
-          <input type="date" class="fi" id="yqDate">
-        </div>
-        <div>
-          <label class="flbl">Mahsulot soni</label>
-          <input type="number" class="fi" id="yqMahsulot" min="1" placeholder="Miqdorni kiriting">
-        </div>
-        <div style="grid-column:1/-1">
-          <label class="flbl">Qayta yamaladigan padosh</label>
-          <input type="number" class="fi" id="yqQayta" min="0" placeholder="Qayta yamaladigan soni">
-        </div>
-      </div>
-      <div style="margin-top:16px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px">
+      <div class="fcard" style="max-width:100%">
+        <div class="succ-msg" id="yamchiqSuccMsg" style="display:none"><i class="fas fa-check-circle"></i>&nbsp; Muvaffaqiyatli saqlandi!</div>
+        <div style="font-size:13px;font-weight:700;color:#ff9f43;margin-bottom:14px"><i class="fas fa-check-circle" style="margin-right:6px"></i>Yamalab chiqilgan brak</div>
+        <label class="flbl">Sana</label>
+        <input type="date" class="fi" id="yqDate" style="margin-bottom:12px">
+        <label class="flbl">Mahsulot soni</label>
+        <input type="number" class="fi" id="yqMahsulot" min="1" placeholder="Miqdorni kiriting" style="margin-bottom:16px">
         <button class="btn-save" onclick="saveYamchiqRecord()"><i class="fas fa-save"></i> Saqlash</button>
+      </div>
+      <div class="fcard" style="max-width:100%">
+        <div class="succ-msg" id="qaytaSuccMsg" style="display:none"><i class="fas fa-check-circle"></i>&nbsp; Muvaffaqiyatli saqlandi!</div>
+        <div style="font-size:13px;font-weight:700;color:#ff9f43;margin-bottom:14px"><i class="fas fa-redo" style="margin-right:6px"></i>Qayta yamaladigan padosh</div>
+        <label class="flbl">Sana</label>
+        <input type="date" class="fi" id="yqDate2" style="margin-bottom:12px">
+        <label class="flbl">Qayta yamaladigan padosh</label>
+        <input type="number" class="fi" id="yqQayta" min="0" placeholder="Qayta yamaladigan soni" style="margin-bottom:16px">
+        <button class="btn-save" onclick="saveQaytaPadosh()"><i class="fas fa-save"></i> Saqlash</button>
       </div>
     </div>
     <div class="tcard" style="margin-bottom:22px">
@@ -987,7 +987,8 @@ function _renderYamchiqContent() {
       <div class="cbox"><canvas id="cYamchiq"></canvas></div>
     </div>`;
 
-  document.getElementById('yqDate').value = todayLocal();
+  document.getElementById('yqDate').value  = todayLocal();
+  document.getElementById('yqDate2').value = todayLocal();
 
   // Fill So'nggi yozuvlar table
   const yqFiltered = _yamchiqTableFilter === 'haftalik'
@@ -1131,7 +1132,6 @@ function _renderYamchiqChart() {
 async function saveYamchiqRecord() {
   const date          = document.getElementById('yqDate').value;
   const mahsulot_soni = parseInt(document.getElementById('yqMahsulot').value);
-  const qayta         = parseInt(document.getElementById('yqQayta').value) || 0;
 
   if (!date || !mahsulot_soni || mahsulot_soni < 1) {
     toast("Sana va mahsulot sonini to'ldiring.", 'e');
@@ -1139,14 +1139,33 @@ async function saveYamchiqRecord() {
   }
 
   try {
-    await apiPostYamchiqRecord({ date, mahsulot_soni, qayta_yamalgan: qayta });
+    await apiPostYamchiqRecord({ date, mahsulot_soni, qayta_yamalgan: 0 });
     const succEl = document.getElementById('yamchiqSuccMsg');
     if (succEl) { succEl.style.display = 'flex'; setTimeout(() => { succEl.style.display = 'none'; }, 2000); }
     toast('Saqlandi!', 's');
     document.getElementById('yqMahsulot').value = '';
-    document.getElementById('yqQayta').value    = '';
     _yamchiqData = await apiGetYamchiqRecords() || [];
     _renderYamchiqContent();
+  } catch (err) {
+    toast(err.message || 'Saqlashda xatolik', 'e');
+  }
+}
+
+async function saveQaytaPadosh() {
+  const date       = document.getElementById('yqDate2').value;
+  const qayta_soni = parseInt(document.getElementById('yqQayta').value);
+
+  if (!date || isNaN(qayta_soni) || qayta_soni < 0) {
+    toast("Sana va miqdorni kiriting.", 'e');
+    return;
+  }
+
+  try {
+    await apiPostQaytaPadosh({ date, qayta_soni });
+    const succEl = document.getElementById('qaytaSuccMsg');
+    if (succEl) { succEl.style.display = 'flex'; setTimeout(() => { succEl.style.display = 'none'; }, 2000); }
+    toast('Saqlandi!', 's');
+    document.getElementById('yqQayta').value = '';
   } catch (err) {
     toast(err.message || 'Saqlashda xatolik', 'e');
   }
