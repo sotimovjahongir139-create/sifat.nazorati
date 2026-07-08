@@ -12,6 +12,7 @@ router.use('/histogramma',     require('./histogramma.routes'));
 router.use('/yamchiq-records', require('./yamchiq.routes'));
 router.use('/qayta-padosh',    require('./qayta_padosh.routes'));
 router.use('/bolim',           require('./bolim.routes'));
+router.use('/fakt',            require('./fakt.routes'));
 router.use('/ai',          require('./ai.routes'));
 router.use('/ai-analytics', require('./ai-analytics.routes'));
 

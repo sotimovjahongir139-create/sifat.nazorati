@@ -140,6 +140,9 @@ async function apiPostSizeGrams(material_type, model, sizes) {
 async function apiGetQaytaPadosh() { return apiFetch('/qayta-padosh'); }
 async function apiPostQaytaPadosh(record) { return apiFetch('/qayta-padosh', { method: 'POST', body: record }); }
 
+// ── FAKT RECORDS ─────────────────────────────────────────────
+async function apiGetFaktMonthlyFoiz() { return apiFetch('/fakt/monthly-foiz'); }
+
 // ── BOLIM ISH VAQTI ─────────────────────────────────────────
 async function apiGetBolim() {
   return apiFetch('/bolim');

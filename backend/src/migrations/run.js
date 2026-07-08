@@ -146,6 +146,20 @@ async function runMigrations() {
   await db.query(`ALTER TABLE yamchiq_records      ADD COLUMN IF NOT EXISTS izoh TEXT DEFAULT NULL`);
   await db.query(`ALTER TABLE qayta_padosh_records ADD COLUMN IF NOT EXISTS izoh TEXT DEFAULT NULL`);
 
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS fakt_records (
+      id         SERIAL PRIMARY KEY,
+      date       DATE         NOT NULL,
+      sku        VARCHAR(255) NOT NULL,
+      qty        INTEGER      NOT NULL CHECK (qty > 0),
+      foiz       NUMERIC(8,2) DEFAULT 0,
+      created_at TIMESTAMPTZ  DEFAULT NOW(),
+      updated_at TIMESTAMPTZ  DEFAULT NOW(),
+      UNIQUE(date, sku)
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_fakt_date ON fakt_records(date)`);
+
   // Force-update admin2 password to arkon_08sifat
   const admin2Hash = await bcrypt.hash('arkon_08sifat', 10);
   await db.query(`UPDATE users SET password_hash=$1 WHERE username='admin2'`, [admin2Hash]);
