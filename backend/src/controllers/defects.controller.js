@@ -5,7 +5,7 @@ const VALID_CATS = ['qayta', 'yamala', 'orta', 'yamchiq'];
 async function list(req, res, next) {
   try {
     const { date, category, sku, limit = 2000, offset = 0 } = req.query;
-    const isPrivileged = ['admin', 'boss'].includes(req.user.role);
+    const isPrivileged = ['admin', 'boss', 'viewer'].includes(req.user.role);
     const params = [];
     let idx   = 1;
     let where = 'WHERE 1=1';

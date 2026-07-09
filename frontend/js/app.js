@@ -932,6 +932,7 @@ function _renderYamchiqContent() {
         <div class="kpi-sub">Joriy oy</div>
       </div>
     </div>
+    ${getCurrentUser()?.role !== 'viewer' ? `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px">
       <div class="fcard" style="max-width:100%">
         <div class="succ-msg" id="yamchiqSuccMsg" style="display:none"><i class="fas fa-check-circle"></i>&nbsp; Muvaffaqiyatli saqlandi!</div>
@@ -955,7 +956,7 @@ function _renderYamchiqContent() {
         <textarea class="fi" id="yqIzoh2" placeholder="Izoh qoldiring (ixtiyoriy)" rows="2" style="margin-bottom:16px;resize:vertical"></textarea>
         <button class="btn-save" onclick="saveQaytaPadosh()"><i class="fas fa-save"></i> Saqlash</button>
       </div>
-    </div>
+    </div>` : ''}
     <div class="tcard" style="margin-bottom:22px">
       <div class="thead">
         <div>
