@@ -16,8 +16,8 @@ async function create(req, res, next) {
     if (!username || !password || !role) {
       return res.status(400).json({ error: "Username, parol va rol talab qilinadi" });
     }
-    if (!['admin', 'boss', 'operator'].includes(role)) {
-      return res.status(400).json({ error: "Noto'g'ri rol (admin/boss/operator)" });
+    if (!['admin', 'boss', 'operator', 'viewer'].includes(role)) {
+      return res.status(400).json({ error: "Noto'g'ri rol (admin/boss/operator/viewer)" });
     }
     if (password.length < 4) {
       return res.status(400).json({ error: "Parol kamida 4 ta belgidan iborat bo'lishi kerak" });

@@ -29,7 +29,7 @@ async function runMigrations() {
 
   // Idempotent: rebuild role constraint (drop admin14, keep admin3)
   await db.query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`);
-  await db.query(`ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','boss','operator','admin3'))`);
+  await db.query(`ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','boss','operator','admin3','viewer'))`);
 
   await db.query(`
     CREATE TABLE IF NOT EXISTS entries (

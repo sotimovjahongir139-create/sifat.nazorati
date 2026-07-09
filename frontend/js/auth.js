@@ -20,7 +20,7 @@ function showApp(user) {
   const initials = (user.username || 'U')[0].toUpperCase();
   document.querySelector('.sb-av').textContent = initials;
   document.querySelector('.sb-ud h4').textContent = user.username;
-  const roleLabel = { admin: 'Administrator', boss: 'Rahbar', operator: 'Operator', admin3: 'AI Analitik' };
+  const roleLabel = { admin: 'Administrator', boss: 'Rahbar', operator: 'Operator', admin3: 'AI Analitik', viewer: 'Viewer' };
   // admin14 has role='admin' — label by username for clarity
   document.querySelector('.sb-ud p').textContent =
     user.username === 'admin14' ? 'Administrator + AI' :
@@ -29,6 +29,10 @@ function showApp(user) {
   // Show admin-only nav items (admin role, excluding admin3 special user)
   document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = (user.role === 'admin' && user.username !== 'admin3') ? '' : 'none';
+  });
+  // Hide viewer-hidden nav items for viewer role
+  document.querySelectorAll('.viewer-hidden').forEach(el => {
+    el.style.display = user.role === 'viewer' ? 'none' : '';
   });
   // Show AI-only nav items (admin3 only)
   document.querySelectorAll('.ai-only').forEach(el => {
@@ -41,15 +45,7 @@ function showApp(user) {
   goPage('dash');
 }
 
-function showLockMsg(msg) {
-  const el = document.getElementById('lockMsg');
-  el.innerHTML = '<i class="fas fa-lock" style="margin-right:7px"></i>' + msg;
-  el.style.display = 'block';
-}
-function hideLockMsg() { document.getElementById('lockMsg').style.display = 'none'; }
-
 async function doLogin() {
-  hideLockMsg();
   const u   = document.getElementById('lu').value.trim();
   const p   = document.getElementById('lp').value.trim();
   const err = document.getElementById('lerr');
@@ -70,13 +66,9 @@ async function doLogin() {
     showApp(user);
   } catch (e) {
     const msg = e.message || "Foydalanuvchi nomi yoki parol noto'g'ri.";
-    if (msg.includes('bloklandi') || msg.includes('blok')) {
-      showLockMsg(msg);
-    } else {
-      err.textContent = msg;
-      err.style.display = 'block';
-      setTimeout(() => { err.style.display = 'none'; }, 3500);
-    }
+    err.textContent = msg;
+    err.style.display = 'block';
+    setTimeout(() => { err.style.display = 'none'; }, 3500);
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-sign-in-alt"></i>&nbsp; Tizimga kirish';

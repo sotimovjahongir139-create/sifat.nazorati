@@ -1334,6 +1334,7 @@ async function renderUsers() {
               <option value="operator">Operator</option>
               <option value="boss">Boss</option>
               <option value="admin">Admin</option>
+              <option value="viewer">Viewer</option>
             </select>
           </div>
         </div>
@@ -1355,7 +1356,7 @@ async function renderUsers() {
 function renderUserRows(users) {
   const tb   = document.getElementById('usersTb');
   const me   = getCurrentUser();
-  const roleLabel = { admin: 'Administrator', boss: 'Rahbar', operator: 'Operator' };
+  const roleLabel = { admin: 'Administrator', boss: 'Rahbar', operator: 'Operator', viewer: 'Viewer' };
   tb.innerHTML = users.map((u, i) => `
     <tr>
       <td style="color:var(--muted)">${i + 1}</td>
