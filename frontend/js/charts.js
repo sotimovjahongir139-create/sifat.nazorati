@@ -500,8 +500,8 @@ function renderTrend(data) {
       const legendVals = datasets.map(ds => ds.data.reduce((s, v) => s + v, 0));
       lstEl.style.display = 'block';
       lstEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px 10px;padding:6px 2px 2px">' +
-        allKeys.map((k, i) => { const v = legendVals[i], pct = weekGrandTotal > 0 ? ((v / weekGrandTotal) * 100).toFixed(1) : '0.0';
-          return `<span data-li="${i}" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap;cursor:pointer"><span style="width:8px;height:8px;border-radius:2px;background:${clr(i)};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
+        allKeys.filter((_, i) => legendVals[i] > 0).map((k, i) => { const origI = allKeys.indexOf(k); const v = legendVals[origI], pct = weekGrandTotal > 0 ? ((v / weekGrandTotal) * 100).toFixed(1) : '0.0';
+          return `<span data-li="${origI}" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap;cursor:pointer"><span style="width:8px;height:8px;border-radius:2px;background:${clr(origI)};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
         }).join('') + '</div>';
       destroyC('trend');
       charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
@@ -546,8 +546,8 @@ function renderTrend(data) {
       const legendVals = datasets.map(ds => ds.data.reduce((s, v) => s + v, 0));
       lstEl.style.display = 'block';
       lstEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px 10px;padding:6px 2px 2px">' +
-        allKeys.map((k, i) => { const v = legendVals[i], pct = monthTotal > 0 ? ((v / monthTotal) * 100).toFixed(1) : '0.0';
-          return `<span data-li="${i}" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap;cursor:pointer"><span style="width:8px;height:8px;border-radius:2px;background:${clr(i)};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
+        allKeys.filter((_, i) => legendVals[i] > 0).map((k) => { const origI = allKeys.indexOf(k); const v = legendVals[origI], pct = monthTotal > 0 ? ((v / monthTotal) * 100).toFixed(1) : '0.0';
+          return `<span data-li="${origI}" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);white-space:nowrap;cursor:pointer"><span style="width:8px;height:8px;border-radius:2px;background:${clr(origI)};flex-shrink:0"></span>${k} — ${v} ta (${pct}%)</span>`;
         }).join('') + '</div>';
       destroyC('trend');
       charts.trend = new Chart(document.getElementById('cTrend').getContext('2d'), {
