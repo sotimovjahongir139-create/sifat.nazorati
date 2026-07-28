@@ -43,7 +43,9 @@ async function fetchWeeklySidebar() {
 
 // ── NAVIGATION ──────────────────────────────────────────────
 async function goPage(name) {
-  fetchWeeklySidebar();
+  const _cu = getCurrentUser();
+  if (_cu?.role === 'vaqt_operatori' && name !== 'bolim') name = 'bolim';
+  if (_cu?.role !== 'vaqt_operatori') fetchWeeklySidebar();
   if (window.innerWidth <= 780) closeSidebar();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-it').forEach(n => n.classList.remove('active'));
@@ -1336,6 +1338,7 @@ async function renderUsers() {
               <option value="boss">Boss</option>
               <option value="admin">Admin</option>
               <option value="viewer">Viewer</option>
+              <option value="vaqt_operatori">Bo'lim operatori</option>
             </select>
           </div>
         </div>
@@ -1357,7 +1360,7 @@ async function renderUsers() {
 function renderUserRows(users) {
   const tb   = document.getElementById('usersTb');
   const me   = getCurrentUser();
-  const roleLabel = { admin: 'Administrator', boss: 'Rahbar', operator: 'Operator', viewer: 'Viewer' };
+  const roleLabel = { admin: 'Administrator', boss: 'Rahbar', operator: 'Operator', viewer: 'Viewer', vaqt_operatori: "Bo'lim operatori" };
   tb.innerHTML = users.map((u, i) => `
     <tr>
       <td style="color:var(--muted)">${i + 1}</td>

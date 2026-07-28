@@ -4,6 +4,7 @@ const VALID_MATERIALS = ['PU', 'TEP'];
 
 async function list(req, res, next) {
   try {
+    if (req.user.role === 'vaqt_operatori') return res.status(403).json({ error: "Ruxsat yo'q" });
     const { material_type } = req.query;
     const params = [];
     let where = 'WHERE 1=1';

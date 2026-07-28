@@ -2,6 +2,7 @@ const db = require('../config/database');
 
 async function dashboard(req, res, next) {
   try {
+    if (req.user.role === 'vaqt_operatori') return res.status(403).json({ error: "Ruxsat yo'q" });
     const now   = new Date();
     const year  = now.getFullYear();
     const month = now.getMonth() + 1;
@@ -45,6 +46,7 @@ async function dashboard(req, res, next) {
 
 async function topModels(req, res, next) {
   try {
+    if (req.user.role === 'vaqt_operatori') return res.status(403).json({ error: "Ruxsat yo'q" });
     const { rows } = await db.query(
       `SELECT sku AS name, SUM(qty) AS total
        FROM entries GROUP BY sku ORDER BY total DESC LIMIT 10`

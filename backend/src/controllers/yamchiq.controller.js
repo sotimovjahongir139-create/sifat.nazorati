@@ -2,6 +2,7 @@ const db = require('../config/database');
 
 async function list(req, res, next) {
   try {
+    if (req.user.role === 'vaqt_operatori') return res.status(403).json({ error: "Ruxsat yo'q" });
     const { rows } = await db.query(
       `SELECT id, TO_CHAR(date,'YYYY-MM-DD') AS date, mahsulot_soni, qayta_yamalgan, created_at
        FROM yamchiq_records ORDER BY date DESC, created_at DESC LIMIT 1000`
@@ -12,6 +13,7 @@ async function list(req, res, next) {
 
 async function create(req, res, next) {
   try {
+    if (req.user.role === 'vaqt_operatori') return res.status(403).json({ error: "Ruxsat yo'q" });
     const { date, mahsulot_soni, qayta_yamalgan = 0, izoh } = req.body;
     if (!date || mahsulot_soni == null) {
       return res.status(400).json({ error: "Sana va mahsulot soni kerak" });

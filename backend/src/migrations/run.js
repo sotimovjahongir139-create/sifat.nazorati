@@ -2,13 +2,14 @@ const bcrypt = require('bcryptjs');
 const db     = require('../config/database');
 
 const SEED_USERS = [
-  { username: 'admin2',         password: 'arkon_08sifat', role: 'admin'    },
-  { username: 'admin',          password: 'arkon07_sifat', role: 'boss'     },
-  { username: 'sifat_nazorati', password: 'arkon09_sifat', role: 'operator' },
-  { username: 'operator2',      password: 'oper123',       role: 'operator' },
-  { username: 'operator3',      password: 'oper123',       role: 'operator' },
-  { username: 'admin3',         password: 'arkon10_sifat', role: 'admin3'   },
-  { username: 'admin14',        password: 'arkon14_sifat', role: 'admin'    },
+  { username: 'admin2',         password: 'arkon_08sifat', role: 'admin'          },
+  { username: 'admin',          password: 'arkon07_sifat', role: 'boss'           },
+  { username: 'sifat_nazorati', password: 'arkon09_sifat', role: 'operator'       },
+  { username: 'operator2',      password: 'oper123',       role: 'operator'       },
+  { username: 'operator3',      password: 'oper123',       role: 'operator'       },
+  { username: 'admin3',         password: 'arkon10_sifat', role: 'admin3'         },
+  { username: 'admin14',        password: 'arkon14_sifat', role: 'admin'          },
+  { username: 'bobur',          password: 'babur1234',     role: 'vaqt_operatori' },
 ];
 
 async function runMigrations() {
@@ -29,7 +30,7 @@ async function runMigrations() {
 
   // Idempotent: rebuild role constraint (drop admin14, keep admin3)
   await db.query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`);
-  await db.query(`ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','boss','operator','admin3','viewer'))`);
+  await db.query(`ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','boss','operator','admin3','viewer','vaqt_operatori'))`);
 
   await db.query(`
     CREATE TABLE IF NOT EXISTS entries (

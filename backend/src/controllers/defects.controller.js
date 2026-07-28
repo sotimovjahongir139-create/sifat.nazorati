@@ -4,6 +4,7 @@ const VALID_CATS = ['qayta', 'yamala', 'orta', 'yamchiq'];
 
 async function list(req, res, next) {
   try {
+    if (req.user.role === 'vaqt_operatori') return res.status(403).json({ error: "Ruxsat yo'q" });
     const { date, category, sku, limit = 2000, offset = 0 } = req.query;
     const isPrivileged = ['admin', 'boss', 'viewer'].includes(req.user.role);
     const params = [];
@@ -37,6 +38,7 @@ async function list(req, res, next) {
 
 async function create(req, res, next) {
   try {
+    if (req.user.role === 'vaqt_operatori') return res.status(403).json({ error: "Ruxsat yo'q" });
     const { date, sku, reason, category, qty, notes } = req.body;
     if (!date || !sku || !reason || !category || !qty) {
       return res.status(400).json({ error: "Barcha majburiy maydonlarni to'ldiring" });
@@ -75,6 +77,7 @@ async function remove(req, res, next) {
 
 async function categoryModels(req, res, next) {
   try {
+    if (req.user.role === 'vaqt_operatori') return res.status(403).json({ error: "Ruxsat yo'q" });
     const { category, month } = req.query;
     if (!category || !month) {
       return res.status(400).json({ error: 'category va month parametrlari kerak' });
@@ -102,6 +105,7 @@ async function categoryModels(req, res, next) {
 
 async function modelCauses(req, res, next) {
   try {
+    if (req.user.role === 'vaqt_operatori') return res.status(403).json({ error: "Ruxsat yo'q" });
     const { model, month } = req.query;
     if (!model || !month) {
       return res.status(400).json({ error: 'model va month parametrlari kerak' });
@@ -129,6 +133,7 @@ async function modelCauses(req, res, next) {
 
 async function weeklySummary(req, res, next) {
   try {
+    if (req.user.role === 'vaqt_operatori') return res.status(403).json({ error: "Ruxsat yo'q" });
     const { rows } = await db.query(`
       SELECT category, COALESCE(SUM(qty),0)::int AS count
       FROM entries

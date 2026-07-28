@@ -20,7 +20,7 @@ function showApp(user) {
   const initials = (user.username || 'U')[0].toUpperCase();
   document.querySelector('.sb-av').textContent = initials;
   document.querySelector('.sb-ud h4').textContent = user.username;
-  const roleLabel = { admin: 'Administrator', boss: 'Rahbar', operator: 'Operator', admin3: 'AI Analitik', viewer: 'Viewer' };
+  const roleLabel = { admin: 'Administrator', boss: 'Rahbar', operator: 'Operator', admin3: 'AI Analitik', viewer: 'Viewer', vaqt_operatori: "Bo'lim operatori" };
   // admin14 has role='admin' — label by username for clarity
   document.querySelector('.sb-ud p').textContent =
     user.username === 'admin14' ? 'Administrator + AI' :
@@ -30,9 +30,14 @@ function showApp(user) {
   document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = (user.role === 'admin' && user.username !== 'admin3') ? '' : 'none';
   });
-  // Hide viewer-hidden nav items for viewer role
+  // Hide viewer-hidden nav items for viewer and vaqt_operatori roles
+  const hideFromRestricted = ['viewer', 'vaqt_operatori'];
   document.querySelectorAll('.viewer-hidden').forEach(el => {
-    el.style.display = user.role === 'viewer' ? 'none' : '';
+    el.style.display = hideFromRestricted.includes(user.role) ? 'none' : '';
+  });
+  // Hide vaqt-hidden nav items for vaqt_operatori role only
+  document.querySelectorAll('.vaqt-hidden').forEach(el => {
+    el.style.display = user.role === 'vaqt_operatori' ? 'none' : '';
   });
   // Show AI-only nav items (admin3 only)
   document.querySelectorAll('.ai-only').forEach(el => {
@@ -42,7 +47,7 @@ function showApp(user) {
   document.querySelectorAll('.ai14-only').forEach(el => {
     el.style.display = user.username === 'admin14' ? '' : 'none';
   });
-  goPage('dash');
+  goPage(user.role === 'vaqt_operatori' ? 'bolim' : 'dash');
 }
 
 async function doLogin() {
