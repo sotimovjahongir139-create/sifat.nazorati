@@ -415,19 +415,54 @@ async function delRecord(id) {
 }
 
 // ── ANALYTICS DRILL-DOWN ────────────────────────────────────
-const _drill = { step: 1, category: null, model: null };
+const _drill = { step: 1, category: null, model: null, range: null, preset: 'current-month' };
 
-function _drillMonth() {
-  const n = new Date();
-  return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
+function _drillRangeFor(preset) {
+  const now = new Date();
+  let start, end;
+  if (preset === 'previous-month') {
+    start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    end = new Date(now.getFullYear(), now.getMonth(), 0);
+  } else if (preset === 'weekly') {
+    const day = now.getDay();
+    const daysSinceMonday = day === 0 ? 6 : day - 1;
+    end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysSinceMonday - 1);
+    start = new Date(end); start.setDate(end.getDate() - 6);
+  } else {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  }
+  return { start: ymdLocal(start), end: ymdLocal(end) };
+}
+
+function _drillRangeLabel() {
+  const range = _drill.range || _drillRangeFor(_drill.preset);
+  const format = date => {
+    const [year, month, day] = date.split('-');
+    return day + '.' + month + '.' + year;
+  };
+  return format(range.start) + ' — ' + format(range.end);
+}
+
+function _drillRangeControls() {
+  const buttons = [
+    ['previous-month', "O'tgan oy"],
+    ['current-month', 'Joriy oy'],
+    ['weekly', 'Haftalik']
+  ];
+  return `<div class="drill-range"><span class="drill-range-label">Davr:</span>${buttons.map(([id, label]) =>
+    `<button class="ttab${_drill.preset === id ? ' active' : ''}" onclick="setDrillPreset('${id}')">${label}</button>`
+  ).join('')}<span class="drill-range-date">${_drillRangeLabel()}</span></div>`;
 }
 
 function renderDrill() {
   const el = document.getElementById('drillContent');
   if (!el) return;
+  if (!_drill.range) _drill.range = _drillRangeFor(_drill.preset);
   if (_drill.step === 1) {
     el.innerHTML = `
       <div class="ch"><div><div class="ch-t">Model → Sabab tahlili</div><div class="ch-s">Kategoriya tanlang</div></div></div>
+      ${_drillRangeControls()}
       <div style="display:flex;gap:16px;padding:16px 0 8px">
         <div onclick="drillGoCategory('Padosh')" style="flex:1;padding:28px 16px;background:rgba(59,130,246,.08);border:2px solid rgba(59,130,246,.25);border-radius:12px;cursor:pointer;text-align:center" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='rgba(59,130,246,.25)'">
           <div style="font-size:18px;font-weight:700;color:#fff">Padosh</div>
@@ -442,11 +477,15 @@ function renderDrill() {
         <div>
           <button class="ttab" onclick="drillBack()" style="margin-bottom:6px">← Orqaga</button>
           <div class="ch-t">${_drill.category} modellari</div>
-          <div class="ch-s">Joriy oy bo'yicha saralangan</div>
+          <div class="ch-s">${_drillRangeLabel()} bo'yicha saralangan</div>
         </div>
       </div>
+      ${_drillRangeControls()}
       <ul class="rlist" id="drillList"><li class="rit" style="justify-content:center;padding:20px"><i class="fas fa-spinner fa-spin" style="color:var(--blue)"></i></li></ul>`;
-    apiGetCategoryModels(_drill.category, _drillMonth()).then(res => {
+    const range = _drill.range || _drillRangeFor(_drill.preset);
+    const requestKey = [_drill.step, _drill.category, range.start, range.end].join('|');
+    apiGetCategoryModels(_drill.category, null, range.start, range.end).then(res => {
+      if (requestKey !== [_drill.step, _drill.category, _drill.range.start, _drill.range.end].join('|')) return;
       const rColors = ['#ffd43b','#aaa','#ff6b35','#4f8ef7','#2ed573','#9c6af8','#2ec4b6','#ff9f43','#55efc4','#ff4757'];
       const items = (res.models || []);
       if (!items.length) { document.getElementById('drillList').innerHTML = `<li class="rit"><span style="opacity:.6">Ma'lumot topilmadi</span></li>`; return; }
@@ -462,20 +501,25 @@ function renderDrill() {
           <div class="rval">${it.count}<span class="rpct">${it.percentage}%</span></div>
         </li>`;
       }).join('');
-    }).catch(() => { document.getElementById('drillList').innerHTML = `<li class="rit"><span style="color:var(--red)">Xatolik yuz berdi</span></li>`; });
+    }).catch(() => {
+      if (requestKey === [_drill.step, _drill.category, _drill.range.start, _drill.range.end].join('|')) document.getElementById('drillList').innerHTML = `<li class="rit"><span style="color:var(--red)">Xatolik yuz berdi</span></li>`;
+    });
   } else {
-    const uzMonth = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'][new Date().getMonth()];
     const shortName = _drill.model.replace(/^(Padosh|Stilka)\s*-\s*/i, '');
     el.innerHTML = `
       <div class="ch">
         <div>
           <button class="ttab" onclick="drillBack()" style="margin-bottom:6px">← Orqaga</button>
-          <div class="ch-t">${shortName} — bu oygi sabablari</div>
-          <div class="ch-s">Jami: <strong id="drillTotal">—</strong> ta &nbsp;|&nbsp; Oy: ${uzMonth}</div>
+          <div class="ch-t">${shortName} — nuqson sabablari</div>
+          <div class="ch-s">Jami: <strong id="drillTotal">—</strong> ta &nbsp;|&nbsp; Davr: ${_drillRangeLabel()}</div>
         </div>
       </div>
+      ${_drillRangeControls()}
       <ul class="rlist" id="drillList"><li class="rit" style="justify-content:center;padding:20px"><i class="fas fa-spinner fa-spin" style="color:var(--blue)"></i></li></ul>`;
-    apiGetModelCauses(_drill.model, _drillMonth()).then(res => {
+    const range = _drill.range || _drillRangeFor(_drill.preset);
+    const requestKey = [_drill.step, _drill.model, range.start, range.end].join('|');
+    apiGetModelCauses(_drill.model, null, range.start, range.end).then(res => {
+      if (requestKey !== [_drill.step, _drill.model, _drill.range.start, _drill.range.end].join('|')) return;
       document.getElementById('drillTotal').textContent = res.total || 0;
       const rColors = ['#ff4757','#ffd43b','#ff6b35','#4f8ef7','#2ed573','#9c6af8','#2ec4b6','#ff9f43','#55efc4'];
       const causes = (res.causes || []);
@@ -492,17 +536,20 @@ function renderDrill() {
           <div class="rval">${it.count}<span class="rpct">${it.percentage}%</span></div>
         </li>`;
       }).join('');
-    }).catch(() => { document.getElementById('drillList').innerHTML = `<li class="rit"><span style="color:var(--red)">Xatolik yuz berdi</span></li>`; });
+    }).catch(() => {
+      if (requestKey === [_drill.step, _drill.model, _drill.range.start, _drill.range.end].join('|')) document.getElementById('drillList').innerHTML = `<li class="rit"><span style="color:var(--red)">Xatolik yuz berdi</span></li>`;
+    });
   }
 }
 
 function drillGoCategory(cat) { _drill.step = 2; _drill.category = cat; _drill.model = null; renderDrill(); }
 function drillGoModel(model)   { _drill.step = 3; _drill.model = model; renderDrill(); }
 function drillBack()           { _drill.step = Math.max(1, _drill.step - 1); if (_drill.step === 1) _drill.category = null; renderDrill(); }
+function setDrillPreset(preset) { _drill.preset = preset; _drill.range = _drillRangeFor(preset); renderDrill(); }
 
 // ── ANALYTICS ───────────────────────────────────────────────
 function renderAnalytics() {
-  _drill.step = 1; _drill.category = null; _drill.model = null;
+  _drill.step = 1; _drill.category = null; _drill.model = null; _drill.preset = 'current-month'; _drill.range = _drillRangeFor(_drill.preset);
   renderDrill();
   const data = getData(); const months = last6();
 

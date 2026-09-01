@@ -190,6 +190,11 @@ textarea.fi{resize:vertical;min-height:88px}
 .ttab.active{background:#1d4ed8;color:#fff}
 .ttab:hover:not(.active){background:rgba(59,130,246,.1);color:var(--text)}
 
+/* Padosh / Stilka drill-down range controls */
+#drillCard .drill-range{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 14px}
+#drillCard .drill-range-label{font-size:11px;color:var(--text2);margin-right:3px;white-space:nowrap}
+#drillCard .drill-range-date{font-size:11px;color:var(--blue);font-weight:600;margin-left:3px;white-space:nowrap}
+
 /* TREND LIST (model/sabab mode) */
 .tl-total{font-size:19px;font-weight:800;color:var(--blue);margin-bottom:10px;padding:4px 0}
 .tl-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(28,28,66,.5)}

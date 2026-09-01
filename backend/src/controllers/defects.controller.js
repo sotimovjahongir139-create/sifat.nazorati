@@ -78,22 +78,27 @@ async function remove(req, res, next) {
 async function categoryModels(req, res, next) {
   try {
     if (req.user.role === 'vaqt_operatori') return res.status(403).json({ error: "Ruxsat yo'q" });
-    const { category, month } = req.query;
-    if (!category || !month) {
-      return res.status(400).json({ error: 'category va month parametrlari kerak' });
+    const { category, month, start_date, end_date } = req.query;
+    if (!category || (!month && !(start_date && end_date))) {
+      return res.status(400).json({ error: 'category va month yoki sana oralig\'i parametrlari kerak' });
     }
+    const hasRange = start_date && end_date;
+    const dateWhere = hasRange ? 'date BETWEEN $1::date AND $2::date' : "TO_CHAR(date,'YYYY-MM')=$1";
+    const dateParams = hasRange ? [start_date, end_date] : [month];
     const totRes = await db.query(
-      `SELECT COALESCE(SUM(qty),0)::int AS total FROM entries WHERE TO_CHAR(date,'YYYY-MM')=$1`,
-      [month]
+      `SELECT COALESCE(SUM(qty),0)::int AS total FROM entries WHERE ${dateWhere}`,
+      dateParams
     );
     const month_total = totRes.rows[0].total;
     const { rows } = await db.query(
-      `SELECT sku AS model, SUM(qty)::int AS count FROM entries WHERE sku ILIKE $1 AND TO_CHAR(date,'YYYY-MM')=$2 GROUP BY sku ORDER BY count DESC`,
-      [category + '%', month]
+      `SELECT sku AS model, SUM(qty)::int AS count FROM entries WHERE sku ILIKE $${dateParams.length + 1} AND ${dateWhere} GROUP BY sku ORDER BY count DESC`,
+      [...dateParams, category + '%']
     );
     res.json({
       category,
       month_total,
+      start_date: hasRange ? start_date : null,
+      end_date: hasRange ? end_date : null,
       models: rows.map(r => ({
         model: r.model,
         count: r.count,
@@ -106,18 +111,21 @@ async function categoryModels(req, res, next) {
 async function modelCauses(req, res, next) {
   try {
     if (req.user.role === 'vaqt_operatori') return res.status(403).json({ error: "Ruxsat yo'q" });
-    const { model, month } = req.query;
-    if (!model || !month) {
-      return res.status(400).json({ error: 'model va month parametrlari kerak' });
+    const { model, month, start_date, end_date } = req.query;
+    if (!model || (!month && !(start_date && end_date))) {
+      return res.status(400).json({ error: 'model va month yoki sana oralig\'i parametrlari kerak' });
     }
+    const hasRange = start_date && end_date;
+    const dateWhere = hasRange ? 'date BETWEEN $2::date AND $3::date' : "TO_CHAR(date,'YYYY-MM')=$2";
+    const dateParams = hasRange ? [model, start_date, end_date] : [model, month];
     const totRes = await db.query(
-      `SELECT COALESCE(SUM(qty),0) AS total FROM entries WHERE sku=$1 AND TO_CHAR(date,'YYYY-MM')=$2`,
-      [model, month]
+      `SELECT COALESCE(SUM(qty),0) AS total FROM entries WHERE sku=$1 AND ${dateWhere}`,
+      dateParams
     );
     const total = parseInt(totRes.rows[0].total);
     const { rows } = await db.query(
-      `SELECT reason AS cause, SUM(qty)::int AS count FROM entries WHERE sku=$1 AND TO_CHAR(date,'YYYY-MM')=$2 GROUP BY reason ORDER BY count DESC`,
-      [model, month]
+      `SELECT reason AS cause, SUM(qty)::int AS count FROM entries WHERE sku=$1 AND ${dateWhere} GROUP BY reason ORDER BY count DESC`,
+      dateParams
     );
     res.json({
       model,

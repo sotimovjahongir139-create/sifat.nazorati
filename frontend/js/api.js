@@ -70,12 +70,16 @@ async function apiGetWeeklySummary() {
   return apiFetch('/defects/weekly-summary');
 }
 
-async function apiGetModelCauses(model, month) {
-  return apiFetch('/defects/model-causes?model=' + encodeURIComponent(model) + '&month=' + encodeURIComponent(month));
+async function apiGetModelCauses(model, month, startDate, endDate) {
+  let query = 'model=' + encodeURIComponent(model) + '&month=' + encodeURIComponent(month || '');
+  if (startDate && endDate) query += '&start_date=' + encodeURIComponent(startDate) + '&end_date=' + encodeURIComponent(endDate);
+  return apiFetch('/defects/model-causes?' + query);
 }
 
-async function apiGetCategoryModels(category, month) {
-  return apiFetch('/defects/category-models?category=' + encodeURIComponent(category) + '&month=' + encodeURIComponent(month));
+async function apiGetCategoryModels(category, month, startDate, endDate) {
+  let query = 'category=' + encodeURIComponent(category) + '&month=' + encodeURIComponent(month || '');
+  if (startDate && endDate) query += '&start_date=' + encodeURIComponent(startDate) + '&end_date=' + encodeURIComponent(endDate);
+  return apiFetch('/defects/category-models?' + query);
 }
 
 // ── ANALYTICS ───────────────────────────────────────────────
