@@ -5,7 +5,7 @@ const VALID_MATERIALS = ['PU', 'TEP'];
 async function list(req, res, next) {
   try {
     if (req.user.role === 'vaqt_operatori') return res.status(403).json({ error: "Ruxsat yo'q" });
-    const { material_type, model, start_date, end_date } = req.query;
+    const { material_type, model, start_date, end_date, aggregate } = req.query;
     const params = [];
     let where = 'WHERE 1=1';
     let idx = 1;
@@ -25,6 +25,34 @@ async function list(req, res, next) {
     if (end_date) {
       where += ` AND q.date <= $${idx++}`;
       params.push(end_date);
+    }
+
+    if (aggregate === 'day') {
+      const sql = `
+        WITH size_details AS (
+          SELECT TO_CHAR(q.date,'YYYY-MM-DD') AS date,
+                 q.material_type,
+                 q.razmer AS size,
+                 ROUND(AVG(q.gramm))::int AS weight_grams,
+                 SUM(q.qty)::int AS count
+          FROM quality_records q
+          ${where}
+          GROUP BY q.date, q.material_type, q.razmer, q.gramm
+        )
+        SELECT date,
+               material_type,
+               SUM(count)::int AS total_count,
+               JSON_AGG(JSON_BUILD_OBJECT(
+                 'size', size,
+                 'count', count,
+                 'weight_grams', weight_grams
+               ) ORDER BY size, weight_grams) AS details
+        FROM size_details
+        GROUP BY date, material_type
+        ORDER BY date ASC
+      `;
+      const { rows } = await db.query(sql, params);
+      return res.json(rows);
     }
 
     const sql = `

@@ -1596,7 +1596,7 @@ async function _fetchHistChartData(material) {
   const mode = material === 'PU' ? _histPUMode : _histTEPMode;
   const model = material === 'PU' ? _histPUModel : _histTEPModel;
   const range = _histRangeFor(mode);
-  const params = { material_type: material, start_date: range.start, end_date: range.end };
+  const params = { material_type: material, start_date: range.start, end_date: range.end, aggregate: 'day' };
   if (model) params.model = model;
   try {
     _histChartData[material] = await apiGetHistogramma(params) || [];
@@ -2021,10 +2021,9 @@ async function renderHistogramma() {
 
 function _renderHistCharts() {
   function filterByMode(mat, mode) {
-    const modelFilter = mat === 'PU' ? _histPUModel : _histTEPModel;
     const range = _histRangeFor(mode);
     return (_histChartData[mat] || []).filter(r =>
-      r.material_type === mat && (!modelFilter || r.model === modelFilter) &&
+      r.material_type === mat &&
       r.date >= range.start && r.date <= range.end
     );
   }
@@ -2168,7 +2167,8 @@ function _renderHistCharts() {
           ? (currentWeekDays().find(d => d.date === date)?.label || date.slice(8, 10))
           : date.slice(8, 10) + '.' + date.slice(5, 7) });
       }
-      const dayQtys = days.map(d => filtered.filter(r => r.date === d.date).reduce((s, r) => s + (parseInt(r.qty) || 1), 0));
+      const dayEntries = days.map(d => filtered.find(r => r.date === d.date) || { date: d.date, total_count: 0, details: [] });
+      const dayQtys = dayEntries.map(entry => parseInt(entry.total_count) || 0);
       const dayEntr = days.map((d, i) => ({ model: d.label, qty: dayQtys[i], gram: '' }));
       const hasData = dayQtys.some(v => v > 0);
       if (hasData && canvas) {
@@ -2179,7 +2179,18 @@ function _renderHistCharts() {
           }]},
           options: {
             responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } },
-            plugins: { legend: { display: false } },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  title: items => days[items[0].dataIndex].date,
+                  label: item => `Jami: ${dayQtys[item.dataIndex]} ta`,
+                  afterLabel: item => (dayEntries[item.dataIndex].details || []).map(detail =>
+                    `${detail.size != null ? detail.size + '-razmer' : 'Razmer kiritilmagan'}: ${detail.count} ta (${detail.weight_grams ?? 0} gr)`
+                  )
+                }
+              }
+            },
             scales: {
               x: { grid: { color: GRID }, ticks: { color: TC, font: { size: 9 } } },
               y: { grid: { color: GRID }, ticks: { color: TC, font: { size: 10 }, precision: 0 }, beginAtZero: true }
@@ -2194,14 +2205,15 @@ function _renderHistCharts() {
     // If a model is selected → per-size/gramm chart
     if (modelFilter) {
       const sizeMap = {};
-      filtered.forEach(r => {
-        const razmer = r.razmer != null && r.razmer !== '' ? String(r.razmer) : null;
+      filtered.forEach(r => (r.details || []).forEach(detail => {
+        const razmer = detail.size != null && detail.size !== '' ? String(detail.size) : null;
         if (!razmer) return;
+        const count = parseInt(detail.count) || 0;
         if (!sizeMap[razmer]) sizeMap[razmer] = { grammTotal: 0, count: 0, qty: 0 };
-        sizeMap[razmer].grammTotal += (parseInt(r.gramm) || 0);
-        sizeMap[razmer].count      += 1;
-        sizeMap[razmer].qty        += (parseInt(r.qty) || 1);
-      });
+        sizeMap[razmer].grammTotal += (parseInt(detail.weight_grams) || 0) * count;
+        sizeMap[razmer].count      += count;
+        sizeMap[razmer].qty        += count;
+      }));
 
       const sizes    = Object.keys(sizeMap).map(Number).sort((a, b) => a - b);
       const sizeEntries = sizes.map(s => ({
@@ -2293,7 +2305,7 @@ async function deleteHistModel(material, model) {
   try {
     await apiDeleteHistogrammaModel(material, model);
     _histData = _histData.filter(r => !(r.material_type === material && r.model === model));
-    _histChartData[material] = (_histChartData[material] || []).filter(r => r.model !== model);
+    await _fetchHistChartData(material);
     _renderHistCharts();
     toast("O'chirildi!", 's');
   } catch (err) {
