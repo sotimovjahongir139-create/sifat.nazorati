@@ -1455,6 +1455,7 @@ let _histPUMode      = 'oylik';
 let _histTEPMode = 'oylik';
 let _histPUModel  = '';
 let _histTEPModel = '';
+let _histChartData = { PU: [], TEP: [] };
 
 function _isHistAdmin2() { return getCurrentUser()?.username === 'admin2'; }
 function _isHistAdmin()  { return getCurrentUser()?.username === 'admin'; }
@@ -1562,10 +1563,46 @@ function _applyHistRoles() {
   if (dateWrap) dateWrap.style.display = isA2 ? 'none' : '';
 }
 
-function setHistModelFilter(material, model) {
+async function setHistModelFilter(material, model) {
   if (material === 'PU') _histPUModel = model;
   else _histTEPModel = model;
+  await _fetchHistChartData(material);
   _renderHistCharts();
+}
+
+function _histRangeFor(mode) {
+  const now = new Date();
+  if (mode === 'haftalik') {
+    const dow = now.getDay();
+    const start = new Date(now);
+    start.setDate(now.getDate() + (dow === 0 ? -6 : 1 - dow));
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start); end.setDate(start.getDate() + 6);
+    return { start: ymdLocal(start), end: ymdLocal(end) };
+  }
+  if (mode === 'otgan-oy') {
+    return {
+      start: ymdLocal(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+      end: ymdLocal(new Date(now.getFullYear(), now.getMonth(), 0))
+    };
+  }
+  return {
+    start: ymdLocal(new Date(now.getFullYear(), now.getMonth(), 1)),
+    end: ymdLocal(new Date(now.getFullYear(), now.getMonth() + 1, 0))
+  };
+}
+
+async function _fetchHistChartData(material) {
+  const mode = material === 'PU' ? _histPUMode : _histTEPMode;
+  const model = material === 'PU' ? _histPUModel : _histTEPModel;
+  const range = _histRangeFor(mode);
+  const params = { material_type: material, start_date: range.start, end_date: range.end };
+  if (model) params.model = model;
+  try {
+    _histChartData[material] = await apiGetHistogramma(params) || [];
+  } catch {
+    _histChartData[material] = [];
+  }
 }
 
 function _refreshHistModelSelects() {
@@ -1828,6 +1865,7 @@ async function saveHistogramma() {
     toast('Saqlandi!', 's');
     setTimeout(() => { succEl.style.display = 'none'; }, 2000);
     _histData = await apiGetHistogramma() || [];
+    await Promise.all(['PU', 'TEP'].map(mat => _fetchHistChartData(mat)));
     _renderHistCharts();
     document.getElementById('hMiqdor').value = '';
     document.getElementById('hGram').value   = '';
@@ -1951,13 +1989,14 @@ function selectHistGrammFromList(gramm) {
   onHistGramChange();
 }
 
-function setHistMode(material, mode) {
+async function setHistMode(material, mode) {
   if (material === 'PU') _histPUMode = mode;
   else _histTEPMode = mode;
-  ['oylik', 'haftalik'].forEach(m => {
+  ['otgan-oy', 'oylik', 'haftalik'].forEach(m => {
     const btn = document.getElementById('hist' + material + 'Tab-' + m);
     if (btn) btn.classList.toggle('active', m === mode);
   });
+  await _fetchHistChartData(material);
   _renderHistCharts();
 }
 
@@ -1976,29 +2015,18 @@ async function renderHistogramma() {
   }
   await Promise.all(['PU', 'TEP'].map(mat => fetchAndCacheModels(mat)));
   _refreshHistModelSelects();
+  await Promise.all(['PU', 'TEP'].map(mat => _fetchHistChartData(mat)));
   _renderHistCharts();
 }
 
 function _renderHistCharts() {
-  const data = _histData;
-  const now  = new Date();
-
   function filterByMode(mat, mode) {
     const modelFilter = mat === 'PU' ? _histPUModel : _histTEPModel;
-    let matData = data.filter(r => r.material_type === mat && (!modelFilter || r.model === modelFilter));
-    if (mode === 'haftalik') {
-      const dow = now.getDay();
-      const mon = new Date(now);
-      mon.setDate(now.getDate() + (dow === 0 ? -6 : 1 - dow));
-      mon.setHours(0, 0, 0, 0);
-      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
-      const monStr = ymdLocal(mon), sunStr = ymdLocal(sun);
-      return matData.filter(r => r.date >= monStr && r.date <= sunStr);
-    }
-    return matData.filter(r => {
-      const d = new Date(r.date + 'T00:00:00');
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-    });
+    const range = _histRangeFor(mode);
+    return (_histChartData[mat] || []).filter(r =>
+      r.material_type === mat && (!modelFilter || r.model === modelFilter) &&
+      r.date >= range.start && r.date <= range.end
+    );
   }
 
   function aggregateByModel(filtered) {
@@ -2129,15 +2157,24 @@ function _renderHistCharts() {
     destroyC('hist' + material);
     const canvas = document.getElementById(canvasId);
 
-    if (mode === 'haftalik') {
-      const wkDays  = currentWeekDays();
-      const dayQtys = wkDays.map(d => filtered.filter(r => r.date === d.date).reduce((s, r) => s + (parseInt(r.qty) || 1), 0));
-      const dayEntr = wkDays.map((d, i) => ({ model: d.label, qty: dayQtys[i], gram: '' }));
+    if (mode === 'haftalik' || mode === 'otgan-oy') {
+      const range = _histRangeFor(mode);
+      const start = new Date(range.start + 'T00:00:00');
+      const end = new Date(range.end + 'T00:00:00');
+      const days = [];
+      for (const day = new Date(start); day <= end; day.setDate(day.getDate() + 1)) {
+        const date = ymdLocal(day);
+        days.push({ date, label: mode === 'haftalik'
+          ? (currentWeekDays().find(d => d.date === date)?.label || date.slice(8, 10))
+          : date.slice(8, 10) + '.' + date.slice(5, 7) });
+      }
+      const dayQtys = days.map(d => filtered.filter(r => r.date === d.date).reduce((s, r) => s + (parseInt(r.qty) || 1), 0));
+      const dayEntr = days.map((d, i) => ({ model: d.label, qty: dayQtys[i], gram: '' }));
       const hasData = dayQtys.some(v => v > 0);
       if (hasData && canvas) {
         charts['hist' + material] = new Chart(canvas.getContext('2d'), {
           type: 'bar',
-          data: { labels: wkDays.map(d => d.label), datasets: [{ data: dayQtys,
+          data: { labels: days.map(d => d.label), datasets: [{ data: dayQtys,
             backgroundColor: barColor, borderColor: borderColor, borderWidth: 1, borderRadius: 6, borderSkipped: false
           }]},
           options: {
@@ -2256,6 +2293,7 @@ async function deleteHistModel(material, model) {
   try {
     await apiDeleteHistogrammaModel(material, model);
     _histData = _histData.filter(r => !(r.material_type === material && r.model === model));
+    _histChartData[material] = (_histChartData[material] || []).filter(r => r.model !== model);
     _renderHistCharts();
     toast("O'chirildi!", 's');
   } catch (err) {

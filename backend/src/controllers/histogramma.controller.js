@@ -5,7 +5,7 @@ const VALID_MATERIALS = ['PU', 'TEP'];
 async function list(req, res, next) {
   try {
     if (req.user.role === 'vaqt_operatori') return res.status(403).json({ error: "Ruxsat yo'q" });
-    const { material_type } = req.query;
+    const { material_type, model, start_date, end_date } = req.query;
     const params = [];
     let where = 'WHERE 1=1';
     let idx = 1;
@@ -13,6 +13,18 @@ async function list(req, res, next) {
     if (material_type) {
       where += ` AND q.material_type = $${idx++}`;
       params.push(material_type);
+    }
+    if (model) {
+      where += ` AND q.model = $${idx++}`;
+      params.push(model.trim());
+    }
+    if (start_date) {
+      where += ` AND q.date >= $${idx++}`;
+      params.push(start_date);
+    }
+    if (end_date) {
+      where += ` AND q.date <= $${idx++}`;
+      params.push(end_date);
     }
 
     const sql = `
