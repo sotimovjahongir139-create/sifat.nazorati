@@ -1596,7 +1596,7 @@ async function _fetchHistChartData(material) {
   const mode = material === 'PU' ? _histPUMode : _histTEPMode;
   const model = material === 'PU' ? _histPUModel : _histTEPModel;
   const range = _histRangeFor(mode);
-  const params = { material_type: material, start_date: range.start, end_date: range.end, aggregate: 'day' };
+  const params = { material_type: material, start_date: range.start, end_date: range.end };
   if (model) params.model = model;
   try {
     _histChartData[material] = await apiGetHistogramma(params) || [];
@@ -2020,283 +2020,48 @@ async function renderHistogramma() {
 }
 
 function _renderHistCharts() {
-  function filterByMode(mat, mode) {
-    const range = _histRangeFor(mode);
-    return (_histChartData[mat] || []).filter(r =>
-      r.material_type === mat &&
-      r.date >= range.start && r.date <= range.end
-    );
-  }
-
-  function aggregateByModel(filtered) {
-    const map = {};
-    filtered.forEach(r => {
-      const key = r.model;
-      if (!map[key]) map[key] = { qty: 0, grams: {} };
-      map[key].qty += (parseInt(r.qty) || 1);
-      const g = String(r.gram || '');
-      map[key].grams[g] = (map[key].grams[g] || 0) + 1;
-    });
-    return Object.entries(map)
-      .map(([model, d]) => ({
-        model,
-        qty: d.qty,
-        gram: Object.entries(d.grams).sort((a, b) => b[1] - a[1])[0]?.[0] || ''
-      }))
-      .sort((a, b) => b.qty - a.qty);
-  }
-
-  function makeBarLabelPlugin(entries) {
-    return {
-      id: 'histBarLabel',
-      afterDatasetsDraw(chart) {
-        const ctx = chart.ctx;
-        chart.data.datasets.forEach((ds, i) => {
-          chart.getDatasetMeta(i).data.forEach((bar, j) => {
-            const e = entries[j]; if (!e || !e.qty) return;
-            const lbl = e.gram ? `${e.qty} (${e.gram} gr)` : String(e.qty);
-            ctx.save();
-            ctx.fillStyle = 'rgba(228,228,248,.9)';
-            ctx.font = 'bold 10px Segoe UI,sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'bottom';
-            ctx.fillText(lbl, bar.x, bar.y - 3);
-            ctx.restore();
-          });
-        });
-      }
-    };
-  }
-
-  function makeDeletePlugin(entryList, material) {
-    const zones = [];
-    return {
-      id: 'histDel_' + material,
-      afterDatasetsDraw(chart) {
-        if (!_isHistAdmin2()) return;
-        zones.length = 0;
-        const ctx = chart.ctx;
-        chart.getDatasetMeta(0).data.forEach((bar, j) => {
-          const e = entryList[j];
-          if (!e || !e.qty) return;
-          const barH = bar.base - bar.y;
-          if (barH < 20) return;
-          const bw = 14, bh = 14;
-          const bx = bar.x - bw / 2;
-          const by = bar.y + 3;
-          zones.push({ x: bx, y: by, w: bw, h: bh, model: e.model });
-          ctx.save();
-          ctx.fillStyle = 'rgba(255,71,87,.85)';
-          ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 3);
-          else { ctx.rect(bx, by, bw, bh); }
-          ctx.fill();
-          ctx.fillStyle = 'rgba(255,255,255,.95)';
-          ctx.font = 'bold 9px Segoe UI,sans-serif';
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText('✕', bx + bw / 2, by + bh / 2);
-          ctx.restore();
-        });
-      },
-      afterEvent(chart, args) {
-        if (!_isHistAdmin2() || args.event.type !== 'click') return;
-        const { x, y } = args.event;
-        for (const z of zones) {
-          if (x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h) {
-            deleteHistModel(material, z.model);
-            break;
-          }
-        }
-      }
-    };
-  }
-
-  function makeGrammBarLabelPlugin(entries) {
-    return {
-      id: 'histGrammLabel',
-      afterDatasetsDraw(chart) {
-        const ctx = chart.ctx;
-        chart.data.datasets.forEach((ds, i) => {
-          chart.getDatasetMeta(i).data.forEach((bar, j) => {
-            const e = entries[j];
-            if (!e || !e.gramm) return;
-            ctx.save();
-            ctx.fillStyle = 'rgba(228,228,248,.9)';
-            ctx.font = 'bold 10px Segoe UI,sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'bottom';
-            ctx.fillText(e.gramm + 'g', bar.x, bar.y - 3);
-            ctx.restore();
-          });
-        });
-      }
-    };
-  }
-
-  const _noDataPlugin = {
-    id: 'histNoData',
-    afterDraw(chart) {
-      if (!chart._noData) return;
-      const { ctx, chartArea } = chart;
-      if (!chartArea) return;
-      ctx.save();
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#6b7280';
-      ctx.font = '13px Segoe UI,sans-serif';
-      ctx.fillText("Ma'lumot kiritilmagan", (chartArea.left + chartArea.right) / 2, (chartArea.top + chartArea.bottom) / 2);
-      ctx.restore();
-    }
-  };
-
-  function buildChart(material, canvasId, barColor, borderColor) {
-    const mode        = material === 'PU' ? _histPUMode : _histTEPMode;
+  function buildTable(material) {
     const modelFilter = material === 'PU' ? _histPUModel : _histTEPModel;
-    const filtered    = filterByMode(material, mode);
-    destroyC('hist' + material);
-    const canvas = document.getElementById(canvasId);
+    const records = (_histChartData[material] || [])
+      .filter(r => r.material_type === material && (!modelFilter || r.model === modelFilter));
 
-    if (mode === 'haftalik' || mode === 'otgan-oy') {
-      const range = _histRangeFor(mode);
-      const start = new Date(range.start + 'T00:00:00');
-      const end = new Date(range.end + 'T00:00:00');
-      const days = [];
-      for (const day = new Date(start); day <= end; day.setDate(day.getDate() + 1)) {
-        const date = ymdLocal(day);
-        days.push({ date, label: mode === 'haftalik'
-          ? (currentWeekDays().find(d => d.date === date)?.label || date.slice(8, 10))
-          : date.slice(8, 10) + '.' + date.slice(5, 7) });
-      }
-      const dayEntries = days.map(d => filtered.find(r => r.date === d.date) || { date: d.date, total_count: 0, details: [] });
-      const dayQtys = dayEntries.map(entry => parseInt(entry.total_count) || 0);
-      const dayEntr = days.map((d, i) => ({ model: d.label, qty: dayQtys[i], gram: '' }));
-      const hasData = dayQtys.some(v => v > 0);
-      if (hasData && canvas) {
-        charts['hist' + material] = new Chart(canvas.getContext('2d'), {
-          type: 'bar',
-          data: { labels: days.map(d => d.label), datasets: [{ data: dayQtys,
-            backgroundColor: barColor, borderColor: borderColor, borderWidth: 1, borderRadius: 6, borderSkipped: false
-          }]},
-          options: {
-            responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } },
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                callbacks: {
-                  title: items => days[items[0].dataIndex].date,
-                  label: item => `Jami: ${dayQtys[item.dataIndex]} ta`,
-                  afterLabel: item => (dayEntries[item.dataIndex].details || []).map(detail =>
-                    `${detail.size != null ? detail.size + '-razmer' : 'Razmer kiritilmagan'}: ${detail.count} ta (${detail.weight_grams ?? 0} gr)`
-                  )
-                }
-              }
-            },
-            scales: {
-              x: { grid: { color: GRID }, ticks: { color: TC, font: { size: 9 } } },
-              y: { grid: { color: GRID }, ticks: { color: TC, font: { size: 10 }, precision: 0 }, beginAtZero: true }
-            }
-          },
-          plugins: [makeBarLabelPlugin(dayEntr)]
-        });
-      }
-      return;
-    }
+    let configRows = (_histSizeConfigCache[material] || []);
+    if (modelFilter) configRows = configRows.filter(c => c.model === modelFilter);
 
-    // If a model is selected → per-size/gramm chart
-    if (modelFilter) {
-      const sizeMap = {};
-      filtered.forEach(r => (r.details || []).forEach(detail => {
-        const razmer = detail.size != null && detail.size !== '' ? String(detail.size) : null;
-        if (!razmer) return;
-        const count = parseInt(detail.count) || 0;
-        if (!sizeMap[razmer]) sizeMap[razmer] = { grammTotal: 0, count: 0, qty: 0 };
-        sizeMap[razmer].grammTotal += (parseInt(detail.weight_grams) || 0) * count;
-        sizeMap[razmer].count      += count;
-        sizeMap[razmer].qty        += count;
-      }));
-
-      const sizes    = Object.keys(sizeMap).map(Number).sort((a, b) => a - b);
-      const sizeEntries = sizes.map(s => ({
-        size:  s,
-        qty:   sizeMap[String(s)].qty,
-        gramm: sizeMap[String(s)].count > 0 ? Math.round(sizeMap[String(s)].grammTotal / sizeMap[String(s)].count) : 0
-      }));
-      const noData = !sizeEntries.length || sizeEntries.every(e => e.gramm === 0);
-
-      if (!canvas) return;
-      const chartInstance = new Chart(canvas.getContext('2d'), {
-        type: 'bar',
-        data: {
-          labels: noData ? [''] : sizeEntries.map(e => String(e.size)),
-          datasets: [{
-            data: noData ? [0] : sizeEntries.map(e => e.gramm),
-            backgroundColor: noData ? 'transparent' : barColor,
-            borderColor:     noData ? 'transparent' : borderColor,
-            borderWidth: 1, borderRadius: 6, borderSkipped: false
-          }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              enabled: !noData,
-              callbacks: {
-                title: (items) => `Razmer: ${items[0].label}`,
-                label: (item) => {
-                  const e = sizeEntries[item.dataIndex];
-                  if (!e) return '';
-                  return [`Miqdor: ${e.qty} ta`, `Gramm: ${e.gramm}g`];
-                }
-              }
-            }
-          },
-          scales: {
-            x: { grid: { color: GRID }, ticks: { color: TC, font: { size: 9 } } },
-            y: { grid: { color: GRID }, ticks: { color: TC, font: { size: 10 }, precision: 0 }, beginAtZero: true,
-                 title: { display: !noData, text: 'Gramm', color: TC, font: { size: 9 } } }
-          }
-        },
-        plugins: noData ? [_noDataPlugin] : [makeGrammBarLabelPlugin(sizeEntries), _noDataPlugin]
-      });
-      chartInstance._noData = noData;
-      charts['hist' + material] = chartInstance;
-      return;
-    }
-
-    // No model selected → show prompt, no bars
-    if (!canvas) return;
-    const promptPlugin = {
-      id: 'histPrompt',
-      afterDraw(chart) {
-        const { ctx, chartArea } = chart;
-        if (!chartArea) return;
-        ctx.save();
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#6b7280';
-        ctx.font = '13px Segoe UI,sans-serif';
-        ctx.fillText('Model tanlang', (chartArea.left + chartArea.right) / 2, (chartArea.top + chartArea.bottom) / 2);
-        ctx.restore();
-      }
-    };
-    charts['hist' + material] = new Chart(canvas.getContext('2d'), {
-      type: 'bar',
-      data: { labels: [], datasets: [{ data: [], backgroundColor: 'transparent' }] },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { enabled: false } },
-        scales: {
-          x: { grid: { color: GRID }, ticks: { color: TC } },
-          y: { grid: { color: GRID }, ticks: { color: TC }, beginAtZero: true }
-        }
-      },
-      plugins: [promptPlugin]
+    const rowMap = {};
+    configRows.forEach(c => {
+      const key = c.model + '\u0000' + c.size;
+      rowMap[key] = { model: c.model, size: Number(c.size), reja: Math.round((Number(c.min_gram) + Number(c.max_gram)) / 2), fakt: 0 };
     });
+    records.forEach(r => {
+      if (r.razmer == null || r.razmer === '') return;
+      const key = r.model + '\u0000' + r.razmer;
+      if (!rowMap[key]) rowMap[key] = { model: r.model, size: Number(r.razmer), reja: 0, fakt: 0 };
+      rowMap[key].fakt += (parseInt(r.gramm) || 0);
+    });
+
+    const rows = Object.values(rowMap).sort((a, b) => a.model.localeCompare(b.model) || a.size - b.size);
+    const isA2 = _isHistAdmin2();
+    const tbody = document.getElementById('histTable' + material + 'Body');
+    if (tbody) {
+      tbody.innerHTML = rows.length ? rows.map(r => {
+        const pct = r.reja > 0 ? (r.fakt / r.reja * 100).toFixed(1) + '%' : '—';
+        const delBtn = isA2 ? ` <i class="fas fa-times" style="color:var(--red,#ff4757);cursor:pointer;margin-left:6px" title="Modelni o'chirish" onclick="deleteHistModel('${material}','${r.model.replace(/'/g, "\\'")}')"></i>` : '';
+        return `<tr><td>${r.model}${delBtn}</td><td>${r.size}</td><td>${r.reja}</td><td>${r.fakt}</td><td>${pct}</td></tr>`;
+      }).join('') : `<tr><td colspan="5" class="empty">Ma'lumot kiritilmagan</td></tr>`;
+    }
+
+    const totalReja = rows.reduce((s, r) => s + r.reja, 0);
+    const totalFakt = rows.reduce((s, r) => s + r.fakt, 0);
+    const totalPct  = totalReja > 0 ? (totalFakt / totalReja * 100).toFixed(1) + '%' : '—';
+    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setTxt('histTable' + material + 'RejaTotal', totalReja);
+    setTxt('histTable' + material + 'FaktTotal', totalFakt);
+    setTxt('histTable' + material + 'PctTotal', totalPct);
   }
 
-  buildChart('PU',  'cHistPU',  'rgba(79,142,247,.75)', '#4f8ef7');
-  buildChart('TEP', 'cHistTEP', 'rgba(46,213,115,.75)', '#2ed573');
+  buildTable('PU');
+  buildTable('TEP');
 }
 
 async function deleteHistModel(material, model) {
