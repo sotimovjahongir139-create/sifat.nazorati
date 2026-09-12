@@ -426,8 +426,8 @@ function _drillRangeFor(preset) {
   } else if (preset === 'weekly') {
     const day = now.getDay();
     const daysSinceMonday = day === 0 ? 6 : day - 1;
-    end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysSinceMonday - 1);
-    start = new Date(end); start.setDate(end.getDate() - 6);
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysSinceMonday);
+    end = new Date(start); end.setDate(start.getDate() + 6);
   } else {
     start = new Date(now.getFullYear(), now.getMonth(), 1);
     end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
