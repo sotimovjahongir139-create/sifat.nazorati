@@ -2031,30 +2031,33 @@ function _renderHistCharts() {
     const rowMap = {};
     configRows.forEach(c => {
       const key = c.model + '\u0000' + c.size;
-      rowMap[key] = { model: c.model, size: Number(c.size), reja: Math.round((Number(c.min_gram) + Number(c.max_gram)) / 2), fakt: 0 };
+      rowMap[key] = { model: c.model, size: Number(c.size), reja: Math.round((Number(c.min_gram) + Number(c.max_gram)) / 2), fakt: 0, miqdor: 0 };
     });
     records.forEach(r => {
       if (r.razmer == null || r.razmer === '') return;
       const key = r.model + '\u0000' + r.razmer;
-      if (!rowMap[key]) rowMap[key] = { model: r.model, size: Number(r.razmer), reja: 0, fakt: 0 };
+      if (!rowMap[key]) rowMap[key] = { model: r.model, size: Number(r.razmer), reja: 0, fakt: 0, miqdor: 0 };
       rowMap[key].fakt += (parseInt(r.gramm) || 0);
+      rowMap[key].miqdor += (parseInt(r.qty) || 0);
     });
 
-    const rows = Object.values(rowMap).sort((a, b) => a.model.localeCompare(b.model) || a.size - b.size);
+    const rows = Object.values(rowMap).filter(r => r.fakt > 0).sort((a, b) => a.model.localeCompare(b.model) || a.size - b.size);
     const isA2 = _isHistAdmin2();
     const tbody = document.getElementById('histTable' + material + 'Body');
     if (tbody) {
       tbody.innerHTML = rows.length ? rows.map(r => {
         const pct = r.reja > 0 ? (r.fakt / r.reja * 100).toFixed(1) + '%' : '—';
         const delBtn = isA2 ? ` <i class="fas fa-times" style="color:var(--red,#ff4757);cursor:pointer;margin-left:6px" title="Modelni o'chirish" onclick="deleteHistModel('${material}','${r.model.replace(/'/g, "\\'")}')"></i>` : '';
-        return `<tr><td>${r.model}${delBtn}</td><td>${r.size}</td><td>${r.reja}</td><td>${r.fakt}</td><td>${pct}</td></tr>`;
-      }).join('') : `<tr><td colspan="5" class="empty">Ma'lumot kiritilmagan</td></tr>`;
+        return `<tr><td>${r.model}${delBtn}</td><td>${r.miqdor}</td><td>${r.size}</td><td>${r.reja}</td><td>${r.fakt}</td><td>${pct}</td></tr>`;
+      }).join('') : `<tr><td colspan="6" class="empty">Ma'lumot kiritilmagan</td></tr>`;
     }
 
+    const totalMiqdor = rows.reduce((s, r) => s + r.miqdor, 0);
     const totalReja = rows.reduce((s, r) => s + r.reja, 0);
     const totalFakt = rows.reduce((s, r) => s + r.fakt, 0);
     const totalPct  = totalReja > 0 ? (totalFakt / totalReja * 100).toFixed(1) + '%' : '—';
     const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setTxt('histTable' + material + 'MiqdorTotal', totalMiqdor);
     setTxt('histTable' + material + 'RejaTotal', totalReja);
     setTxt('histTable' + material + 'FaktTotal', totalFakt);
     setTxt('histTable' + material + 'PctTotal', totalPct);
