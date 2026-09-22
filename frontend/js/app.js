@@ -548,10 +548,47 @@ function drillBack()           { _drill.step = Math.max(1, _drill.step - 1); if 
 function setDrillPreset(preset) { _drill.preset = preset; _drill.range = _drillRangeFor(preset); renderDrill(); }
 
 // ── ANALYTICS ───────────────────────────────────────────────
+function weeklyComparisonBadge(data) {
+  const today = new Date();
+  const day = today.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const thisMonday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + diffToMonday);
+  const thisSunday = new Date(thisMonday); thisSunday.setDate(thisMonday.getDate() + 6);
+  const lastMonday = new Date(thisMonday); lastMonday.setDate(thisMonday.getDate() - 7);
+  const lastSunday = new Date(thisMonday); lastSunday.setDate(thisMonday.getDate() - 1);
+
+  const inRange = (r, start, end) => {
+    const d = new Date(r.date + 'T00:00:00');
+    return d >= start && d <= end;
+  };
+  const thisWeekCount = data.filter(r => inRange(r, thisMonday, thisSunday)).length;
+  const lastWeekCount = data.filter(r => inRange(r, lastMonday, lastSunday)).length;
+
+  let valHtml;
+  if (lastWeekCount === 0) {
+    valHtml = thisWeekCount === 0
+      ? `<span class="wk-cmp-val wk-cmp-flat">—</span>`
+      : `<span class="wk-cmp-val wk-cmp-up"><i class="fas fa-arrow-up"></i> yangi</span>`;
+  } else {
+    const pct = (thisWeekCount - lastWeekCount) / lastWeekCount * 100;
+    const pctTxt = (pct > 0 ? '+' : '') + pct.toFixed(1) + '%';
+    if (thisWeekCount > lastWeekCount)      valHtml = `<span class="wk-cmp-val wk-cmp-up"><i class="fas fa-arrow-up"></i> ${pctTxt}</span>`;
+    else if (thisWeekCount < lastWeekCount) valHtml = `<span class="wk-cmp-val wk-cmp-down"><i class="fas fa-arrow-down"></i> ${pctTxt}</span>`;
+    else                                    valHtml = `<span class="wk-cmp-val wk-cmp-flat">0%</span>`;
+  }
+
+  return `<div class="wk-cmp-badge">
+    <span class="wk-cmp-lbl">Haftalik o'zgarish</span>
+    ${valHtml}
+    <span class="wk-cmp-sub">${thisWeekCount} ta (joriy hafta) / ${lastWeekCount} ta (o'tgan hafta)</span>
+  </div>`;
+}
+
 function renderAnalytics() {
   _drill.step = 1; _drill.category = null; _drill.model = null; _drill.preset = 'current-month'; _drill.range = _drillRangeFor(_drill.preset);
   renderDrill();
   const data = getData(); const months = last6();
+  document.getElementById('weeklyCmpCard').innerHTML = weeklyComparisonBadge(data);
 
   destroyC('aTrend');
   charts.aTrend = new Chart(document.getElementById('cATrend').getContext('2d'), {

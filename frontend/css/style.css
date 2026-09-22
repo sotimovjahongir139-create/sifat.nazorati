@@ -163,6 +163,15 @@ textarea.fi{resize:vertical;min-height:88px}
 .pc-g{background:rgba(46,213,115,.1);border:1px solid rgba(46,213,115,.2)}.pc-g .pct-val{color:var(--green)}
 .pc-n{background:rgba(255,255,255,.04);border:1px solid var(--border)}.pc-n .pct-val{color:var(--text2)}
 
+/* WEEKLY COMPARISON BADGE */
+.wk-cmp-badge{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:13px;padding:14px 18px}
+.wk-cmp-lbl{font-size:12px;font-weight:600;color:var(--text2)}
+.wk-cmp-val{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:8px;font-size:13px;font-weight:700}
+.wk-cmp-up{background:rgba(64,220,127,.12);color:var(--green)}
+.wk-cmp-down{background:rgba(255,95,110,.12);color:var(--red)}
+.wk-cmp-flat{background:rgba(255,255,255,.04);color:var(--text2)}
+.wk-cmp-sub{font-size:11px;color:var(--muted)}
+
 /* ARKON TEXT LOGO */
 .arkon-logo{font-size:21px;font-weight:900;color:#fff;letter-spacing:-1px;font-family:'Segoe UI',system-ui,sans-serif;line-height:1}
 .sb-arkon{font-size:11px;font-weight:900;color:#fff;letter-spacing:-.5px;font-family:'Segoe UI',system-ui,sans-serif;line-height:1}
