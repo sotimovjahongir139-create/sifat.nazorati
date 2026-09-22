@@ -58,6 +58,16 @@ const REASON_COLORS = [
   'rgba(46,196,213,.8)','rgba(255,159,67,.8)','rgba(105,213,131,.8)'
 ];
 
+// Minimal, cohesive palette for the Bosh sahifa (dashboard) charts only —
+// 4 muted tones + 1 accent, reused via index rather than a distinct hue per item.
+const DASH_COLORS = [
+  'rgba(79,142,247,.85)',
+  'rgba(107,114,128,.75)',
+  'rgba(138,147,166,.7)',
+  'rgba(74,85,104,.75)',
+  'rgba(95,115,150,.75)'
+];
+
 const UZ_MONTHS = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
 const GRID = 'rgba(255,255,255,.04)';
 const TC   = '#6b7280';

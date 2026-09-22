@@ -1,6 +1,29 @@
 /* Sifat Nazorati — App logic (navigation, forms, tables) */
 'use strict';
 
+// ── THEME ───────────────────────────────────────────────────
+function _syncThemeIcon() {
+  const icon = document.getElementById('themeIcon');
+  if (!icon) return;
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  icon.className = isLight ? 'fas fa-moon' : 'fas fa-sun';
+}
+function initTheme() {
+  try {
+    if (localStorage.getItem('theme') === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    else document.documentElement.removeAttribute('data-theme');
+  } catch { /* ignore */ }
+  _syncThemeIcon();
+}
+function toggleTheme() {
+  const goingLight = document.documentElement.getAttribute('data-theme') !== 'light';
+  if (goingLight) document.documentElement.setAttribute('data-theme', 'light');
+  else document.documentElement.removeAttribute('data-theme');
+  try { localStorage.setItem('theme', goingLight ? 'light' : 'dark'); } catch { /* ignore */ }
+  _syncThemeIcon();
+}
+initTheme();
+
 // ── DATA CACHE ──────────────────────────────────────────────
 let _data = [];
 function getData() { return _data; }
@@ -241,13 +264,13 @@ function renderDash() {
 
   document.getElementById('k-today').textContent =
     data.filter(r => r.date === today).reduce((s, r) => s + r.qty, 0);
-  document.getElementById('k-month').textContent =
-    data.filter(r => { const d = new Date(r.date + 'T00:00:00'); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); }).reduce((s, r) => s + r.qty, 0);
+  const mData = data.filter(r => { const d = new Date(r.date + 'T00:00:00'); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); });
+  document.getElementById('k-month').textContent = mData.reduce((s, r) => s + r.qty, 0);
 
-  const topMod = topNmodels(data, 1);
+  const topMod = topNmodels(mData, 1);
   document.getElementById('k-sku').textContent = topMod[0]?.total > 0 ? topMod[0].name : '—';
 
-  const topReason = REASONS.map(r => ({ r, t: reasonTotal(data, r) })).sort((a, b) => b.t - a.t);
+  const topReason = REASONS.map(r => ({ r, t: reasonTotal(mData, r) })).sort((a, b) => b.t - a.t);
   document.getElementById('k-reason').textContent = topReason[0]?.t > 0 ? topReason[0].r : '—';
 
   renderTrend(data);
@@ -258,7 +281,7 @@ function renderDash() {
   charts.sku = new Chart(document.getElementById('cSku').getContext('2d'), {
     type: 'doughnut',
     data: { labels, datasets: [{ data: values,
-      backgroundColor: ['rgba(79,142,247,.8)','rgba(46,213,115,.8)','rgba(255,107,53,.8)','rgba(255,212,59,.8)','rgba(156,106,248,.8)','rgba(100,100,120,.5)'],
+      backgroundColor: labels.map((_, i) => DASH_COLORS[i % DASH_COLORS.length]),
       borderWidth: 2, borderColor: 'rgba(20,20,46,.8)'
     }]},
     options: { responsive: true, maintainAspectRatio: false, cutout: '63%',
@@ -269,13 +292,12 @@ function renderDash() {
   destroyC('reason');
   charts.reason = new Chart(document.getElementById('cReason').getContext('2d'), {
     type: 'bar',
-    data: { labels: REASONS, datasets: [{ data: REASONS.map(r => reasonTotal(data, r)), backgroundColor: REASON_COLORS, borderRadius: 5, borderSkipped: false }] },
+    data: { labels: REASONS, datasets: [{ data: REASONS.map(r => reasonTotal(data, r)), backgroundColor: REASONS.map((_, i) => DASH_COLORS[i % DASH_COLORS.length]), borderRadius: 5, borderSkipped: false }] },
     options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } },
       scales: { x: { grid: { color: GRID }, ticks: { color: TC, font: { size: 9 } } }, y: { grid: { display: false }, ticks: { color: TC, font: { size: 9 } } } } }
   });
 
   // Top 10 ranking — current month only
-  const mData = data.filter(r => { const d = new Date(r.date + 'T00:00:00'); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); });
   renderRankList('skuRank', topNmodels(mData, 10),
     ['#ffd43b','#aaa','#ff6b35',...Array(7).fill('#6666aa')],
     ['rgba(255,212,59,.5)','rgba(170,170,170,.35)','rgba(255,107,53,.45)',...Array(7).fill('rgba(100,100,170,.3)')]);
