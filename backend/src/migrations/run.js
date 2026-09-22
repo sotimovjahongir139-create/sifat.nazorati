@@ -53,6 +53,19 @@ async function runMigrations() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  await db.query(`ALTER TABLE custom_reasons ADD COLUMN IF NOT EXISTS is_visible BOOLEAN NOT NULL DEFAULT true`);
+  // Hide legacy reasons from the dropdown without deleting them — old entries still reference these by name.
+  await db.query(
+    `UPDATE custom_reasons SET is_visible = false WHERE name = ANY($1::text[])`,
+    [[
+      'Ablo rantdiga yopishgan', 'Rand qiysheygan', 'No komplekt', 'Padosh oynab ketgan',
+      'Rand erigan', 'Bir birga yopishgan', 'Ezilgan', 'Grami pas', 'No par',
+      'Qolip ochilb ketgan', 'Padosh kopirgan', 'Suv tushgan randiga',
+      'Randida havo qolib ketgan', "Dog' bo'lib qolgan", 'Qolip ushlab ketgan',
+      'Suv qolib ketgan', 'Parda tushgan', 'Randi kesilib ketgan',
+      'Qolipdagi kamchiliklar', 'Charxlaganda havo chiqib qolgan', "Charxlab qo'ygan",
+    ]]
+  );
 
   await db.query(`
     CREATE TABLE IF NOT EXISTS quality_records (
